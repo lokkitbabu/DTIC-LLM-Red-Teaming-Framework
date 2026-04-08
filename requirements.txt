@@ -1,0 +1,10 @@
+requests
+pydantic
+pandas
+openai
+anthropic
+python-dotenv
+streamlit
+plotly
+scikit-learn
+kaleido

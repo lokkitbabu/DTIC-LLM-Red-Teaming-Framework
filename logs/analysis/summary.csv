@@ -1,0 +1,2 @@
+model,scenario_id,identity_consistency_avg,cultural_authenticity_avg,naturalness_avg,information_yield_avg,run_count
+ollama:mistral,example_scenario,4.5,3.5,4.5,3.5,1
