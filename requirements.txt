@@ -3,9 +3,11 @@ pydantic
 pandas
 openai
 anthropic
-huggingface_hub
 python-dotenv
 streamlit
 plotly
 scikit-learn
 kaleido
+supabase
+openpyxl
+reportlab

@@ -32,7 +32,9 @@ def append_manifest(entry: dict):
         json.dump(manifest, f, indent=2)
 
 
-def run_experiment(scenario_path: str, model_str: str, interviewer_str: str, judge_str: str = None, eval_target: str = "subject", max_turns: int = 40, retries: int = 2):
+def run_experiment(scenario_path: str, model_str: str, interviewer_str: str, judge_str: str = None,
+                   eval_target: str = "subject", max_turns: int = 40, retries: int = 2,
+                   prompt_format: str = "flat"):
     scenario = load_scenario(scenario_path)
     scenario_id = scenario.get("scenario_id", Path(scenario_path).stem)
 
@@ -40,7 +42,8 @@ def run_experiment(scenario_path: str, model_str: str, interviewer_str: str, jud
         try:
             model = build_model(model_str)
             interviewer_model = build_model(interviewer_str)
-            runner = ConversationRunner(model, interviewer_model, max_turns=max_turns)
+            runner = ConversationRunner(model, interviewer_model, max_turns=max_turns,
+                                        prompt_format=prompt_format)
             run_data = runner.run(scenario)
 
             if scenario.get("language", "english").lower() != "english":
@@ -55,6 +58,15 @@ def run_experiment(scenario_path: str, model_str: str, interviewer_str: str, jud
 
             log_path = save_run(run_data)
             export_for_manual_scoring(run_data)
+
+            # Sync to Supabase
+            try:
+                from dashboard.supabase_store import get_store
+                store = get_store()
+                if store.available:
+                    store.save_run(run_data)
+            except Exception:
+                pass
 
             append_manifest({
                 "run_id": run_data["run_id"],
@@ -87,36 +99,41 @@ def run_experiment(scenario_path: str, model_str: str, interviewer_str: str, jud
 
 def main():
     parser = argparse.ArgumentParser(description="Batch DTIC Offset evaluation runner")
-    parser.add_argument("--scenarios", required=True, help="Path to scenarios directory or single JSON file")
-    parser.add_argument("--models", nargs="+", required=True, help="Subject model strings e.g. ollama:mistral openai:gpt-4o")
-    parser.add_argument("--interviewer", required=True, help="Interviewer model e.g. openai:gpt-4o")
-    parser.add_argument("--judge", default=None, help="Judge model for automated scoring")
-    parser.add_argument("--eval-target", default="subject", choices=["subject", "interviewer"],
-                        help="Which side to score (default: subject)")
+    parser.add_argument("--scenarios", required=True)
+    parser.add_argument("--models", nargs="+", required=True)
+    parser.add_argument("--interviewer", required=True)
+    parser.add_argument("--judge", default=None)
+    parser.add_argument("--eval-target", default="subject", choices=["subject", "interviewer"])
+    parser.add_argument("--prompt-formats", nargs="+", default=["flat"],
+                        choices=["flat", "hierarchical", "xml"],
+                        help="One or more prompt formats for A/B testing (default: flat)")
+    parser.add_argument("--runs-per-combo", type=int, default=1,
+                        help="How many times to run each scenario×model×format combo (default: 1)")
     parser.add_argument("--max-turns", type=int, default=40)
     parser.add_argument("--retries", type=int, default=2)
     args = parser.parse_args()
 
     scenario_path = Path(args.scenarios)
-    if scenario_path.is_dir():
-        scenario_files = sorted(scenario_path.glob("*.json"))
-    else:
-        scenario_files = [scenario_path]
+    scenario_files = sorted(scenario_path.glob("*.json")) if scenario_path.is_dir() else [scenario_path]
 
-    print(f"Scenarios: {len(scenario_files)} | Models: {len(args.models)}")
-    print(f"Total runs: {len(scenario_files) * len(args.models)}\n")
+    total = len(scenario_files) * len(args.models) * len(args.prompt_formats) * args.runs_per_combo
+    print(f"Scenarios: {len(scenario_files)} | Models: {len(args.models)} | "
+          f"Formats: {args.prompt_formats} | Runs/combo: {args.runs_per_combo}")
+    print(f"Total runs: {total}\n")
 
     for scenario_file in scenario_files:
         for model_str in args.models:
-            run_experiment(
-                str(scenario_file),
-                model_str,
-                interviewer_str=args.interviewer,
-                judge_str=args.judge,
-                eval_target=args.eval_target,
-                max_turns=args.max_turns,
-                retries=args.retries,
-            )
+            for fmt in args.prompt_formats:
+                for run_n in range(args.runs_per_combo):
+                    run_experiment(
+                        str(scenario_file), model_str,
+                        interviewer_str=args.interviewer,
+                        judge_str=args.judge,
+                        eval_target=args.eval_target,
+                        max_turns=args.max_turns,
+                        retries=args.retries,
+                        prompt_format=fmt,
+                    )
 
     print(f"\nManifest: {MANIFEST_PATH}")
 

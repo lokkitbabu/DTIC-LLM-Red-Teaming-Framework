@@ -66,6 +66,10 @@ def render_aggregate_charts(run_index: pd.DataFrame, logs_dir: Path = Path("logs
     st.markdown("---")
     _render_radar_chart(run_index)
     st.markdown("---")
+    _render_jailbreak_resistance_curve(run_index, logs_dir)
+    st.markdown("---")
+    _render_prompt_format_comparison(run_index)
+    st.markdown("---")
     _render_persona_pressure_heatmap(run_index, logs_dir)
     st.markdown("---")
     _render_run_count_table(run_index)
@@ -417,3 +421,149 @@ def _render_batch_rescore_expander(run_index: pd.DataFrame, logs_dir: Path) -> N
                     st.caption(f"• {rid}: {err}")
 
             st.cache_data.clear()
+
+
+def _render_jailbreak_resistance_curve(run_index: pd.DataFrame, logs_dir: Path) -> None:
+    """
+    Jailbreak Resistance Curve: for each model, plot the turn at which identity
+    consistency first drops below a threshold across runs.
+
+    X axis: turn number (escalation intensity proxy)
+    Y axis: % of runs still in-persona (identity_consistency >= threshold)
+
+    Models that hold longer are more operationally useful to the client.
+    """
+    st.markdown("### Jailbreak Resistance Curve")
+    st.caption(
+        "Shows what fraction of runs per model maintain identity consistency (score ≥ threshold) "
+        "at each turn. Steeper drop = model breaks sooner under pressure."
+    )
+
+    threshold = st.slider("Identity consistency threshold", 1, 5, 3, key="jb_threshold")
+
+    scoring_dir = logs_dir / "scoring"
+    if not scoring_dir.exists():
+        st.info("No per-turn scoring data yet. Score runs via the Per-Turn Score tab to populate this chart.")
+        return
+
+    # Load all per-turn scoring CSVs
+    frames = []
+    for csv_path in scoring_dir.glob("*.csv"):
+        if csv_path.name == "run_scores.csv":
+            continue
+        try:
+            df = pd.read_csv(csv_path)
+            if "turn" in df.columns and "identity_consistency" in df.columns and "run_id" in df.columns:
+                frames.append(df[["run_id", "turn", "identity_consistency"]])
+        except Exception:
+            continue
+
+    if not frames:
+        st.info("No per-turn scores found. Score some runs first.")
+        return
+
+    all_turns = pd.concat(frames, ignore_index=True)
+    all_turns["identity_consistency"] = pd.to_numeric(all_turns["identity_consistency"], errors="coerce")
+    all_turns = all_turns.dropna(subset=["identity_consistency"])
+
+    # Join with run_index to get model labels
+    if "model" not in all_turns.columns:
+        model_map = run_index.set_index("run_id")["model"].to_dict() if not run_index.empty else {}
+        all_turns["model"] = all_turns["run_id"].map(model_map).fillna("unknown")
+
+    models = sorted(all_turns["model"].dropna().unique())
+    if not models:
+        st.info("No model labels found.")
+        return
+
+    max_turn = int(all_turns["turn"].max())
+    colors = px.colors.qualitative.Set1
+
+    fig = go.Figure()
+    for i, model in enumerate(models):
+        model_df = all_turns[all_turns["model"] == model]
+        run_ids = model_df["run_id"].unique()
+        n_runs = len(run_ids)
+
+        # For each turn: fraction of runs still in-persona
+        turn_survival = []
+        for turn in range(1, max_turn + 1):
+            turn_data = model_df[model_df["turn"] <= turn]
+            # A run has "broken" if any turn up to this point scored below threshold
+            broken = set(
+                turn_data[turn_data["identity_consistency"] < threshold]["run_id"].unique()
+            )
+            surviving = n_runs - len(broken)
+            turn_survival.append({"turn": turn, "survival": surviving / n_runs if n_runs else 0})
+
+        if not turn_survival:
+            continue
+
+        sv_df = pd.DataFrame(turn_survival)
+        fig.add_trace(go.Scatter(
+            x=sv_df["turn"],
+            y=sv_df["survival"] * 100,
+            mode="lines+markers",
+            name=model,
+            line=dict(color=colors[i % len(colors)], width=2),
+            marker=dict(size=5),
+            hovertemplate=f"<b>{model}</b><br>Turn %{{x}}<br>%{{y:.1f}}% in-persona<extra></extra>",
+        ))
+
+    fig.update_layout(
+        title=f"Jailbreak Resistance Curve (threshold: identity_consistency ≥ {threshold})",
+        xaxis_title="Turn Number",
+        yaxis=dict(title="% of Runs Still In-Persona", range=[0, 105]),
+        legend_title="Model",
+        hovermode="x unified",
+        margin=dict(t=50, b=40),
+        height=420,
+    )
+    fig.add_hline(y=50, line_dash="dot", line_color="grey",
+                  annotation_text="50% broken", annotation_position="right")
+
+    st.plotly_chart(fig, use_container_width=True)
+    _png_download_button(fig, "jailbreak_resistance_curve.png")
+
+
+def _render_prompt_format_comparison(run_index: pd.DataFrame) -> None:
+    """
+    Prompt Format A/B Comparison: average scores per metric grouped by prompt_format.
+    Only rendered when multiple formats are present in the data.
+    """
+    if "prompt_format" not in run_index.columns:
+        return
+
+    formats = run_index["prompt_format"].dropna().unique()
+    if len(formats) < 2:
+        return  # Nothing to compare yet
+
+    st.markdown("### Prompt Format A/B Comparison")
+    st.caption("Compares flat vs hierarchical vs XML prompt structures on identity consistency metrics.")
+
+    available = [m for m in METRICS if m in run_index.columns]
+    stats = run_index.groupby("prompt_format")[available].mean().reset_index()
+
+    fig = go.Figure()
+    colors = px.colors.qualitative.Pastel
+    for i, metric in enumerate(available):
+        fig.add_trace(go.Bar(
+            name=METRIC_LABELS[metric],
+            x=stats["prompt_format"],
+            y=stats[metric].round(2),
+            marker_color=colors[i % len(colors)],
+            text=stats[metric].round(2),
+            textposition="auto",
+        ))
+
+    fig.update_layout(
+        barmode="group",
+        title="Average Score by Prompt Format",
+        xaxis_title="Prompt Format",
+        yaxis=dict(range=[0, 5], title="Average Score"),
+        legend_title="Metric",
+        margin=dict(t=50, b=20),
+        height=350,
+    )
+    st.plotly_chart(fig, use_container_width=True)
+    _png_download_button(fig, "prompt_format_comparison.png")
