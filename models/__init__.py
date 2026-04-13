@@ -4,6 +4,7 @@ from models.hf_adapter import HuggingFaceAdapter
 from models.openai_adapter import OpenAIAdapter
 from models.anthropic_adapter import AnthropicAdapter
 from models.grok_adapter import GrokAdapter
+from models.together_adapter import TogetherAdapter
 
 __all__ = [
     "ModelAdapter",
@@ -12,4 +13,5 @@ __all__ = [
     "OpenAIAdapter",
     "AnthropicAdapter",
     "GrokAdapter",
+    "TogetherAdapter",
 ]

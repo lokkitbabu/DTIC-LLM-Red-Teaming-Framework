@@ -28,6 +28,7 @@ cp .env.example .env
 | `ANTHROPIC_API_KEY` | Anthropic | If using `anthropic:*` models |
 | `XAI_API_KEY` | Grok (xAI) | If using `grok:*` models |
 | `HF_API_TOKEN` | Hugging Face | If using `hf:*` models |
+| `TOGETHER_API_KEY` | Together AI | If using `together:*` models |
 
 Ollama runs locally and requires no API key — just have the Ollama daemon running.
 
@@ -53,11 +54,13 @@ python main.py \
 | Flag | Description | Default |
 |---|---|---|
 | `--scenario` | Path to scenario JSON | required |
-| `--model` | `provider:model_name` | required |
+| `--model` | `provider:model_name` (subject) | required |
+| `--interviewer` | `provider:model_name` (interviewer) | required |
 | `--judge` | Judge model for auto-scoring | none |
+| `--eval-target` | Which side to score: `subject` or `interviewer` | `subject` |
 | `--max-turns` | Max conversation turns | 40 |
 
-**Supported providers:** `ollama`, `openai`, `anthropic`, `grok`, `hf`
+**Supported providers:** `ollama`, `openai`, `anthropic`, `grok`, `hf`, `together`
 
 Output is written to `logs/<run_id>.json` and a manual scoring sheet to `logs/scoring/<run_id>.csv`.
 
@@ -70,7 +73,8 @@ Run all combinations of scenarios × models in one command:
 ```bash
 python batch_run.py \
   --scenarios scenarios/ \
-  --models ollama:mistral openai:gpt-4o \
+  --models together:meta-llama/Llama-4-Maverick-Instruct-17B-128E openai:gpt-4o \
+  --interviewer together:meta-llama/Llama-4-Maverick-Instruct-17B-128E \
   --judge openai:gpt-4o
 ```
 
@@ -143,6 +147,7 @@ Every run uses fixed generation parameters (temperature, top_p, seed) defined in
 |---|---|---|
 | **Ollama** | Yes | `seed` is passed in the `options` block of the HTTP payload to the local Ollama API. Fully deterministic when the same seed is used. |
 | **OpenAI** | Yes | `seed` is passed directly to `chat.completions.create`. Supported since late 2023 (gpt-4-turbo and newer). Outputs are *system-fingerprint* deterministic — identical seed + params should yield the same result. |
+| **Together AI** | Partial | `seed` is not forwarded in the current adapter. Reproducibility is not guaranteed; set `temperature=0` to minimise variance. |
 | **Grok (xAI)** | Partial | Grok uses an OpenAI-compatible endpoint. The `seed` param is forwarded in the request, but determinism is not officially guaranteed by xAI at this time. |
 | **Anthropic** | No | The Anthropic API does not expose a `seed` parameter. Reproducibility is not guaranteed even with identical temperature and top_p settings. |
 | **HuggingFace** | No | The HuggingFace Inference API does not accept a `seed` parameter. Determinism depends on the underlying model and hosting environment and is generally not guaranteed. |
