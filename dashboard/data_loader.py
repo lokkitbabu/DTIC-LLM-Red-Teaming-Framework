@@ -268,8 +268,14 @@ class DataLoader:
                     continue
                 validated = RunLogSchema.model_validate(raw)
             except Exception as exc:
-                logger.warning("Skipping %s: %s", json_path, exc)
+                logger.warning("Skipping %s: %s", json_path.name, exc)
                 skipped += 1
+                try:
+                    reasons = st.session_state.get("skipped_reasons", [])
+                    reasons.append(f"{json_path.name}: {str(exc)[:120]}")
+                    st.session_state["skipped_reasons"] = reasons[-10:]
+                except Exception:
+                    pass
                 continue
 
             run_id = validated.run_id

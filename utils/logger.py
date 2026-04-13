@@ -18,15 +18,9 @@ class TurnSchema(BaseModel):
     turn: int
     speaker: Literal["interviewer", "subject"]
     text: str
-    text_en: Optional[str] = None  # English translation when language != english
+    text_en: Optional[str] = None
     timestamp: str
-    raw_prompt: Optional[str] = None
-
-    @model_validator(mode="after")
-    def subject_turns_require_raw_prompt(self) -> "TurnSchema":
-        if self.speaker == "subject" and not self.raw_prompt:
-            raise ValueError("Subject turns must include 'raw_prompt'")
-        return self
+    raw_prompt: Optional[str] = None  # present for subject turns; optional for compatibility
 
 
 class MetadataSchema(BaseModel):
@@ -36,6 +30,8 @@ class MetadataSchema(BaseModel):
 
 
 class RunLogSchema(BaseModel):
+    model_config = {"extra": "ignore"}  # tolerate extra fields from any runner
+
     run_id: str
     timestamp: str
     scenario_id: str

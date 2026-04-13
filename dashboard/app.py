@@ -101,9 +101,43 @@ page = st.sidebar.radio(
 )
 
 if st.sidebar.button("🔄 Refresh"):
-    # Preserve filter state — only clear the DataLoader cache (Req 26.4)
     st.cache_data.clear()
     st.rerun()
+
+# Upload a run log directly
+with st.sidebar.expander("📤 Upload run log"):
+    uploaded = st.file_uploader("Drop a run JSON", type="json", key="log_uploader")
+    if uploaded:
+        import json as _ujson
+        try:
+            run_data = _ujson.loads(uploaded.read())
+            run_id = run_data.get("run_id", "unknown")
+            # Save locally
+            LOGS_DIR.mkdir(exist_ok=True)
+            out = LOGS_DIR / f"{run_id}.json"
+            out.write_text(_ujson.dumps(run_data, indent=2))
+            # Sync to Supabase
+            try:
+                from dashboard.supabase_store import get_store
+                store = get_store()
+                if store.available:
+                    store.save_run(run_data)
+                    st.sidebar.success(f"Uploaded + synced: {run_id[:8]}…")
+                else:
+                    st.sidebar.success(f"Saved locally: {run_id[:8]}…")
+            except Exception:
+                st.sidebar.success(f"Saved locally: {run_id[:8]}…")
+            st.cache_data.clear()
+            st.rerun()
+        except Exception as e:
+            st.sidebar.error(f"Invalid JSON: {e}")
+
+# Show skip reasons if any files were rejected
+skipped_reasons = st.session_state.get("skipped_reasons", [])
+if skipped_reasons:
+    with st.sidebar.expander(f"⚠️ {len(skipped_reasons)} file(s) skipped"):
+        for r in skipped_reasons:
+            st.caption(r)
 
 # Dark mode toggle (Req 25.1–25.4)
 dark_mode = st.sidebar.checkbox("Dark mode", value=st.session_state["dark_mode"], key="dark_mode_toggle")
