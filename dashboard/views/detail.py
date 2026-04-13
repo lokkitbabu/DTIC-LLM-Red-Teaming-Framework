@@ -17,7 +17,7 @@ import streamlit as st
 
 from evaluation.rubric import RUBRIC
 from dashboard.views.conversation import render_conversation_log
-from dashboard.views.scoring import render_manual_scoring_ui
+from dashboard.views.scoring import render_manual_scoring_ui, render_run_scoring_ui
 from dashboard.flag_manager import FlagManager
 
 _METRICS = [
@@ -44,25 +44,26 @@ def render_run_detail(
     run_id = run_data.get("run_id", "unknown")
     st.subheader(f"Run: {run_id}")
 
-    tab_overview, tab_conversation, tab_score = st.tabs(
-        ["Overview", "Conversation", "Score"]
+    tab_overview, tab_conversation, tab_rate, tab_score = st.tabs(
+        ["Overview", "Conversation", "Rate Run", "Per-Turn Score"]
     )
 
     with tab_overview:
         _render_overview(run_data, manual_scores, logs_dir)
 
     with tab_conversation:
-        # Full transcript — all turns, both speakers
         render_conversation_log(run_data)
 
+    with tab_rate:
+        render_run_scoring_ui(run_data, scoring_dir)
+
     with tab_score:
-        # Side-by-side: full transcript on left, scoring form on right
         col_log, col_form = st.columns([1, 1], gap="large")
         with col_log:
             st.markdown("#### Conversation Log")
             _render_plain_transcript(run_data)
         with col_form:
-            st.markdown("#### Score Subject Turns")
+            st.markdown("#### Per-Turn Scores")
             render_manual_scoring_ui(run_data, manual_scores, scoring_dir)
 
 

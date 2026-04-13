@@ -49,6 +49,11 @@ def render_results_view(run_index: pd.DataFrame, scoring_dir: Path, planned_runs
     _render_progress_tracker(run_index, scoring_dir, planned_runs)
     st.markdown("---")
 
+    # Pull in run-level scores from run_scores.csv if present
+    run_scores_df = _load_run_scores(scoring_dir)
+    if not run_scores_df.empty:
+        st.info(f"📊 {len(run_scores_df)} run-level scores from {run_scores_df['rater_id'].nunique()} rater(s) loaded from run_scores.csv")
+
     if run_index.empty:
         st.info("No run data yet. Execute batch runs to populate this page.")
         return
@@ -69,6 +74,28 @@ def render_results_view(run_index: pd.DataFrame, scoring_dir: Path, planned_runs
     _render_consistency_table(run_index)
     st.markdown("---")
     _render_export_table(run_index)
+
+
+def _load_run_scores(scoring_dir: Path) -> pd.DataFrame:
+    """Load run_scores.csv if present."""
+    path = Path(scoring_dir) / "run_scores.csv"
+    if not path.exists():
+        return pd.DataFrame()
+    try:
+        return pd.read_csv(path, dtype={"run_id": str, "rater_id": str})
+    except Exception:
+        return pd.DataFrame()
+
+
+def _render_rater_summary(run_scores_df: pd.DataFrame) -> None:
+    """Show per-rater average scores across all runs."""
+    if run_scores_df.empty:
+        return
+    st.markdown("### Rater Summary")
+    numeric = run_scores_df[["rater_id"] + [m for m in METRICS if m in run_scores_df.columns]]
+    summary = numeric.groupby("rater_id")[[m for m in METRICS if m in numeric.columns]].mean().round(2)
+    summary["total_avg"] = summary.mean(axis=1).round(2)
+    st.dataframe(summary.rename(columns=METRIC_LABELS_FULL), use_container_width=True)
 
 
 # ---------------------------------------------------------------------------

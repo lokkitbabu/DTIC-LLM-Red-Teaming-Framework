@@ -1,5 +1,5 @@
 """
-ManualScoringUI: per-turn manual scoring form.
+ManualScoringUI: per-turn and per-run manual scoring forms.
 """
 
 from __future__ import annotations
@@ -11,7 +11,7 @@ from typing import Optional
 import pandas as pd
 import streamlit as st
 
-from dashboard.score_writer import ScoreWriter, TurnScoreEntry
+from dashboard.score_writer import ScoreWriter, TurnScoreEntry, RunScoreEntry
 
 _METRICS = [
     "identity_consistency",
@@ -26,6 +26,131 @@ _METRIC_LABELS = {
     "naturalness": "Naturalness",
     "information_yield": "Information Yield",
 }
+
+_RUBRIC_HINTS = {
+    "identity_consistency": "Does the model maintain its persona, backstory, and tone without contradiction?",
+    "cultural_authenticity": "Are language, references, and norms plausible for the assigned context?",
+    "naturalness": "Does the conversation flow like a real human exchange?",
+    "information_yield": "Does the model produce substantive, scenario-relevant content?",
+}
+
+
+def render_run_scoring_ui(run_data: dict, scoring_dir: Path) -> None:
+    """
+    Per-run scoring: one overall score per rater for the entire run.
+    Scores are stored in logs/scoring/run_scores.csv (one row per rater × run).
+    """
+    run_id = run_data.get("run_id", "unknown")
+    writer = ScoreWriter()
+
+    rater_key = f"run_score_rater_{run_id}"
+    if rater_key not in st.session_state:
+        st.session_state[rater_key] = ""
+
+    col_rater, col_status = st.columns([2, 3])
+    with col_rater:
+        st.text_input("Rater ID", key=rater_key, placeholder="Your identifier (e.g. Z, L, N, S)")
+
+    rater_id = st.session_state.get(rater_key, "").strip()
+
+    # Load existing score for this rater if present
+    existing = writer.load_run_score_for(run_id, rater_id, scoring_dir) if rater_id else None
+
+    with col_status:
+        if existing:
+            st.success(f"✅ Already scored by **{rater_id}** — values pre-loaded. Re-save to update.")
+        elif rater_id:
+            st.info("No existing score for this rater. Score and save below.")
+
+    st.markdown("---")
+
+    # Quick conversation summary (last 6 turns) for context
+    with st.expander("📋 Conversation preview (last 6 turns)", expanded=False):
+        conversation = run_data.get("conversation", [])
+        for turn in conversation[-6:]:
+            speaker = turn.get("speaker", "unknown")
+            icon = "🤖" if speaker == "subject" else "🎙️"
+            st.markdown(f"**{icon} Turn {turn.get('turn')} — {speaker.title()}:** {turn.get('text', '')[:300]}{'…' if len(turn.get('text','')) > 300 else ''}")
+
+    st.markdown("---")
+    st.markdown("### Overall Run Scores")
+    st.caption("Score the run as a whole, not individual turns. 1 = worst, 5 = best.")
+
+    metric_values: dict[str, int] = {}
+    for metric in _METRICS:
+        default_val = 3
+        if existing:
+            try:
+                v = existing.get(metric)
+                if v is not None and str(v).strip() != "":
+                    default_val = int(float(str(v)))
+            except (TypeError, ValueError):
+                pass
+
+        st.markdown(f"**{_METRIC_LABELS[metric]}**")
+        st.caption(_RUBRIC_HINTS[metric])
+        metric_values[metric] = st.select_slider(
+            _METRIC_LABELS[metric],
+            options=[1, 2, 3, 4, 5],
+            value=default_val,
+            key=f"run_score_{run_id}_{metric}",
+            label_visibility="collapsed",
+        )
+
+    total = sum(metric_values.values())
+    st.markdown(f"**Total: {total} / 20**")
+
+    default_notes = existing.get("notes", "") if existing else ""
+    notes = st.text_area(
+        "Notes",
+        value=default_notes,
+        key=f"run_score_notes_{run_id}",
+        placeholder="Overall observations about this run",
+        height=80,
+    )
+
+    st.markdown("---")
+    if st.button("💾 Save Run Score", type="primary", key=f"save_run_score_{run_id}"):
+        if not rater_id:
+            st.error("Enter a Rater ID before saving.")
+            return
+
+        entry: RunScoreEntry = {
+            "identity_consistency": metric_values["identity_consistency"],
+            "cultural_authenticity": metric_values["cultural_authenticity"],
+            "naturalness": metric_values["naturalness"],
+            "information_yield": metric_values["information_yield"],
+            "notes": notes,
+        }
+        writer.save_run_score(run_data=run_data, score=entry, rater_id=rater_id, scoring_dir=scoring_dir)
+        st.success(f"Score saved — {run_id} / rater {rater_id} / total {total}/20")
+        st.cache_data.clear()
+
+    # Show all raters who have scored this run
+    all_scores = writer.load_run_scores(scoring_dir)
+    if not all_scores.empty:
+        run_scores = all_scores[all_scores["run_id"] == run_id]
+        if not run_scores.empty:
+            st.markdown("#### Scores by rater")
+            display_cols = ["rater_id"] + _METRICS + ["total", "notes"]
+            available = [c for c in display_cols if c in run_scores.columns]
+            st.dataframe(
+                run_scores[available].rename(columns={m: _METRIC_LABELS[m] for m in _METRICS}),
+                use_container_width=True,
+                hide_index=True,
+            )
+            # Show averages
+            numeric_cols = [m for m in _METRICS if m in run_scores.columns]
+            if numeric_cols:
+                avgs = run_scores[numeric_cols].apply(pd.to_numeric, errors="coerce").mean()
+                avg_total = avgs.sum()
+                avg_row = {_METRIC_LABELS[m]: f"{avgs[m]:.2f}" for m in numeric_cols}
+                avg_row["rater_id"] = "**avg**"
+                avg_row["total"] = f"{avg_total:.2f}"
+                st.markdown(
+                    " | ".join([f"**{_METRIC_LABELS[m]}**: {avgs[m]:.2f}" for m in numeric_cols])
+                    + f" | **Total**: {avg_total:.2f}"
+                )
 
 
 def _safe_int(val, default: int = 1) -> int:
