@@ -97,9 +97,11 @@ def main():
         store = get_store()
         if store.available:
             store.save_run(run_data)
-            print("Run synced to Supabase.")
-    except Exception:
-        pass
+            print(f"✓ Synced to Supabase — visible in dashboard immediately.")
+        else:
+            print("  (Supabase not configured — run is local only. Add credentials to .env to auto-sync.)")
+    except Exception as e:
+        print(f"  (Supabase sync failed: {e})")
 
     csv_path = export_for_manual_scoring(run_data)
     print(f"Manual scoring sheet: {csv_path}")
