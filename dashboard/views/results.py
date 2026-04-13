@@ -136,7 +136,7 @@ def _render_leaderboard(run_index: pd.DataFrame, run_scores_df: pd.DataFrame) ->
         yaxis2=dict(title="Total", overlaying="y", side="right", range=[0, 22], showgrid=False),
         legend_title="Metric", margin=dict(t=50, b=20), height=380,
     )
-    st.plotly_chart(fig, width='stretch')
+    st.plotly_chart(fig, use_container_width=True)
     try:
         st.download_button("Download leaderboard PNG", data=fig.to_image(format="png"),
                            file_name="leaderboard.png", mime="image/png")
@@ -307,7 +307,7 @@ def _render_score_heatmap(stats: pd.DataFrame, metrics: list[str], title_suffix:
         height=max(250, 80 * len(models) + 100),
     )
 
-    st.plotly_chart(fig, width='stretch')
+    st.plotly_chart(fig, use_container_width=True)
 
     try:
         img_bytes = fig.to_image(format="png")
@@ -425,7 +425,7 @@ def _render_consistency_heatmap(rows: list[dict], metrics: list[str]) -> None:
         height=max(200, 70 * len(labels) + 100),
     )
 
-    st.plotly_chart(fig, width='stretch')
+    st.plotly_chart(fig, use_container_width=True)
 
 
 # ---------------------------------------------------------------------------

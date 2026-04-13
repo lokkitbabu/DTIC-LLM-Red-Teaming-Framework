@@ -109,7 +109,7 @@ def _render_score_histograms(run_index: pd.DataFrame) -> None:
                 legend_title_text="Model",
                 margin=dict(t=40, b=20),
             )
-            st.plotly_chart(fig, width="stretch")
+            st.plotly_chart(fig, use_container_width=True)
             _png_download_button(
                 fig,
                 f"score_histogram_{metric}.png",
@@ -190,7 +190,7 @@ def _render_model_bar_chart(run_index: pd.DataFrame) -> None:
         legend_title_text="Metric",
         margin=dict(t=40, b=20),
     )
-    st.plotly_chart(fig, width="stretch")
+    st.plotly_chart(fig, use_container_width=True)
     _png_download_button(fig, "avg_score_by_model.png")
 
 
@@ -237,7 +237,7 @@ def _render_scenario_bar_chart(run_index: pd.DataFrame) -> None:
         xaxis_tickangle=-30,
         margin=dict(t=40, b=60),
     )
-    st.plotly_chart(fig, width="stretch")
+    st.plotly_chart(fig, use_container_width=True)
     _png_download_button(fig, "avg_score_by_scenario.png")
 
 
@@ -283,7 +283,7 @@ def _render_radar_chart(run_index: pd.DataFrame) -> None:
         legend_title_text="Model",
         margin=dict(t=60, b=20),
     )
-    st.plotly_chart(fig, width="stretch")
+    st.plotly_chart(fig, use_container_width=True)
     _png_download_button(fig, "radar_chart.png")
 
 
@@ -342,7 +342,7 @@ def _render_persona_pressure_heatmap(run_index: pd.DataFrame, logs_dir: Path) ->
         aspect="auto",
     )
     fig.update_layout(margin=dict(t=60, b=40))
-    st.plotly_chart(fig, width="stretch")
+    st.plotly_chart(fig, use_container_width=True)
     _png_download_button(fig, "persona_pressure_heatmap.png")
 
 
@@ -522,7 +522,7 @@ def _render_jailbreak_resistance_curve(run_index: pd.DataFrame, logs_dir: Path) 
     fig.add_hline(y=50, line_dash="dot", line_color="grey",
                   annotation_text="50% broken", annotation_position="right")
 
-    st.plotly_chart(fig, width='stretch')
+    st.plotly_chart(fig, use_container_width=True)
     _png_download_button(fig, "jailbreak_resistance_curve.png")
 
 
@@ -565,5 +565,5 @@ def _render_prompt_format_comparison(run_index: pd.DataFrame) -> None:
         margin=dict(t=50, b=20),
         height=350,
     )
-    st.plotly_chart(fig, width='stretch')
+    st.plotly_chart(fig, use_container_width=True)
     _png_download_button(fig, "prompt_format_comparison.png")

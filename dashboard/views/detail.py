@@ -217,7 +217,7 @@ def _render_drift_chart(manual_scores: pd.DataFrame) -> None:
         yaxis=dict(range=[1, 5]),
         legend_title="Metric",
     )
-    st.plotly_chart(fig, width='stretch')
+    st.plotly_chart(fig, use_container_width=True)
 
 
 def _build_markdown_report(run_data: dict, manual_scores: pd.DataFrame) -> str:
