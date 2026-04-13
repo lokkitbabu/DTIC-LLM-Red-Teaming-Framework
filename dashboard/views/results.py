@@ -58,6 +58,9 @@ def render_results_view(run_index: pd.DataFrame, scoring_dir: Path, planned_runs
         st.info("No run data yet. Execute batch runs to populate this page.")
         return
 
+    _render_leaderboard(run_index, run_scores_df)
+    st.markdown("---")
+
     scenarios = sorted(run_index["scenario_id"].dropna().unique().tolist())
 
     if len(scenarios) == 1:
@@ -74,6 +77,71 @@ def render_results_view(run_index: pd.DataFrame, scoring_dir: Path, planned_runs
     _render_consistency_table(run_index)
     st.markdown("---")
     _render_export_table(run_index)
+
+
+def _render_leaderboard(run_index: pd.DataFrame, run_scores_df: pd.DataFrame) -> None:
+    """Ranked model table — primary source: run_scores.csv averages; fallback: run_index."""
+    st.markdown("### Leaderboard")
+
+    if not run_scores_df.empty and all(m in run_scores_df.columns for m in METRICS):
+        numeric = run_scores_df[["model"] + METRICS].copy()
+        for m in METRICS:
+            numeric[m] = pd.to_numeric(numeric[m], errors="coerce")
+        grouped = numeric.groupby("model")[METRICS].mean()
+        n_col = run_scores_df.groupby("model").size().rename("N Scores")
+        source_label = "Manual scores (run_scores.csv)"
+    else:
+        available = [m for m in METRICS if m in run_index.columns]
+        if not available:
+            st.info("No scores available for leaderboard.")
+            return
+        grouped = run_index.groupby("model")[available].mean()
+        n_col = run_index.groupby("model").size().rename("N Runs")
+        source_label = "LLM judge scores"
+
+    grouped["Total"] = grouped[METRICS].sum(axis=1)
+    grouped = grouped.sort_values("Total", ascending=False).reset_index()
+    grouped = grouped.merge(n_col.reset_index(), on="model", how="left")
+    grouped.insert(0, "Rank", range(1, len(grouped) + 1))
+    leader_total = grouped["Total"].iloc[0]
+    grouped["vs #1"] = (grouped["Total"] - leader_total).round(2).apply(
+        lambda v: "—" if v == 0 else f"{v:+.2f}"
+    )
+    for m in METRICS + ["Total"]:
+        if m in grouped.columns:
+            grouped[m] = grouped[m].round(2)
+    grouped = grouped.rename(columns={"model": "Model", **METRIC_LABELS_FULL})
+
+    st.caption(f"Source: {source_label}")
+    st.dataframe(grouped, use_container_width=True, hide_index=True)
+
+    colors_seq = px.colors.qualitative.Set2
+    fig = go.Figure()
+    for i, metric in enumerate(METRICS):
+        label = METRIC_LABELS_FULL[metric]
+        if label in grouped.columns:
+            fig.add_trace(go.Bar(
+                name=METRIC_LABELS[metric],
+                x=grouped["Model"], y=grouped[label],
+                marker_color=colors_seq[i % len(colors_seq)],
+            ))
+    fig.add_trace(go.Scatter(
+        name="Total", x=grouped["Model"], y=grouped["Total"],
+        mode="markers+text", marker=dict(size=10, color="#1a1a1a"),
+        text=grouped["Total"].astype(str), textposition="top center", yaxis="y2",
+    ))
+    fig.update_layout(
+        barmode="stack", title="Model Leaderboard — Stacked Score by Metric",
+        xaxis_title="Model", yaxis=dict(title="Score", range=[0, 20]),
+        yaxis2=dict(title="Total", overlaying="y", side="right", range=[0, 22], showgrid=False),
+        legend_title="Metric", margin=dict(t=50, b=20), height=380,
+    )
+    st.plotly_chart(fig, use_container_width=True)
+    try:
+        st.download_button("Download leaderboard PNG", data=fig.to_image(format="png"),
+                           file_name="leaderboard.png", mime="image/png")
+    except Exception:
+        pass
 
 
 def _load_run_scores(scoring_dir: Path) -> pd.DataFrame:

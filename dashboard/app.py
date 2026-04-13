@@ -21,6 +21,7 @@ from dashboard.views.run_executor import render_run_executor
 from dashboard.views.agreement import render_agreement_view
 from dashboard.views.scenarios import render_scenarios_view
 from dashboard.views.results import render_results_view
+from dashboard.views.coordination import render_coordination_view
 
 LOGS_DIR = Path("logs")
 SCORING_DIR = Path("logs/scoring")
@@ -76,7 +77,7 @@ st.sidebar.title("Analytics Dashboard")
 
 page = st.sidebar.radio(
     "Navigate",
-    options=["Results", "Summary", "Run Detail", "Charts", "Compare", "Run Scenario", "Agreement", "Scenarios"],
+    options=["Results", "Coordination", "Summary", "Run Detail", "Charts", "Compare", "Run Scenario", "Agreement", "Scenarios"],
 )
 
 if st.sidebar.button("🔄 Refresh"):
@@ -203,6 +204,9 @@ filtered_index = apply_filters(run_index, filter_state, logs_dir=LOGS_DIR)
 if page == "Results":
     planned = st.sidebar.number_input("Planned runs", min_value=1, value=30, step=1, key="planned_runs")
     render_results_view(filtered_index, scoring_dir=SCORING_DIR, planned_runs=int(planned))
+
+elif page == "Coordination":
+    render_coordination_view(filtered_index, scoring_dir=SCORING_DIR)
 
 elif page == "Summary":
     selected_run_id = render_summary_view(filtered_index, keyword=keyword, flagged_only=flagged_only)

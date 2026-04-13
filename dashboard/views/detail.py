@@ -18,6 +18,7 @@ import streamlit as st
 from evaluation.rubric import RUBRIC
 from dashboard.views.conversation import render_conversation_log
 from dashboard.views.scoring import render_manual_scoring_ui, render_run_scoring_ui
+from dashboard.views.drift import render_drift_analysis
 from dashboard.flag_manager import FlagManager
 
 _METRICS = [
@@ -44,8 +45,8 @@ def render_run_detail(
     run_id = run_data.get("run_id", "unknown")
     st.subheader(f"Run: {run_id}")
 
-    tab_overview, tab_conversation, tab_rate, tab_score = st.tabs(
-        ["Overview", "Conversation", "Rate Run", "Per-Turn Score"]
+    tab_overview, tab_conversation, tab_rate, tab_drift, tab_score = st.tabs(
+        ["Overview", "Conversation", "Rate Run", "Drift Analysis", "Per-Turn Score"]
     )
 
     with tab_overview:
@@ -53,9 +54,13 @@ def render_run_detail(
 
     with tab_conversation:
         render_conversation_log(run_data)
+        _render_pdf_download(run_data, manual_scores)
 
     with tab_rate:
         render_run_scoring_ui(run_data, scoring_dir)
+
+    with tab_drift:
+        render_drift_analysis(run_data, logs_dir)
 
     with tab_score:
         col_log, col_form = st.columns([1, 1], gap="large")
@@ -67,7 +72,25 @@ def render_run_detail(
             render_manual_scoring_ui(run_data, manual_scores, scoring_dir)
 
 
-def _render_plain_transcript(run_data: dict) -> None:
+def _render_pdf_download(run_data: dict, manual_scores: pd.DataFrame) -> None:
+    """Render a white paper PDF download button below the transcript."""
+    st.markdown("---")
+    st.markdown("#### Export Transcript")
+    if st.button("📄 Generate PDF", key=f"pdf_{run_data.get('run_id')}"):
+        with st.spinner("Building PDF…"):
+            try:
+                from dashboard.export_pdf import build_run_pdf
+                pdf_bytes = build_run_pdf(run_data, manual_scores if not manual_scores.empty else None)
+                run_id = run_data.get("run_id", "run")
+                st.download_button(
+                    label="⬇️ Download PDF",
+                    data=pdf_bytes,
+                    file_name=f"{run_id}_transcript.pdf",
+                    mime="application/pdf",
+                    key=f"pdf_dl_{run_id}",
+                )
+            except Exception as e:
+                st.error(f"PDF generation failed: {e}")
     """
     Render a compact scrollable transcript of all turns for reference
     while scoring. Uses st.chat_message for a clean readable layout.
