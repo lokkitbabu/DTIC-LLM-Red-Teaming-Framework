@@ -11,3 +11,4 @@ kaleido
 supabase
 openpyxl
 reportlab
+huggingface_hub
