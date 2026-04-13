@@ -150,6 +150,23 @@ class ScoreWriter:
             writer.writeheader()
             writer.writerows(existing_rows)
 
+        # Sync to Supabase if available
+        try:
+            from dashboard.supabase_store import get_store
+            store = get_store()
+            if store.available:
+                store.save_run_score(
+                    run_id=run_data["run_id"],
+                    scenario_id=run_data.get("scenario_id", ""),
+                    model=run_data.get("subject_model", run_data.get("model", "")),
+                    rater_id=rater_id,
+                    scores={m: score.get(m) for m in ["identity_consistency", "cultural_authenticity",
+                                                       "naturalness", "information_yield"]},
+                    notes=score.get("notes", ""),
+                )
+        except Exception:
+            pass
+
         return out_path
 
     def load_run_scores(self, scoring_dir: Path) -> "pd.DataFrame":

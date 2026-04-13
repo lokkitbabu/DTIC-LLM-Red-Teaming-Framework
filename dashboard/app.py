@@ -9,8 +9,22 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Optional
+import os
 
 import streamlit as st
+
+# ---------------------------------------------------------------------------
+# Load API keys from Streamlit secrets into environment variables.
+# This makes them available to model adapters and Supabase store on Cloud.
+# ---------------------------------------------------------------------------
+_SECRET_KEYS = [
+    "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "XAI_API_KEY",
+    "TOGETHER_API_KEY", "HF_API_TOKEN",
+    "SUPABASE_URL", "SUPABASE_KEY",
+]
+for _k in _SECRET_KEYS:
+    if _k in st.secrets and not os.environ.get(_k):
+        os.environ[_k] = st.secrets[_k]
 
 from dashboard.data_loader import DataLoader, FilterState, apply_filters, _merge_filter_state
 from dashboard.views.summary import render_summary_view
