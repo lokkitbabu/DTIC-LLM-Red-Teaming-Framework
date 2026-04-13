@@ -522,7 +522,7 @@ def _render_jailbreak_resistance_curve(run_index: pd.DataFrame, logs_dir: Path) 
     fig.add_hline(y=50, line_dash="dot", line_color="grey",
                   annotation_text="50% broken", annotation_position="right")
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
     _png_download_button(fig, "jailbreak_resistance_curve.png")
 
 
@@ -565,5 +565,5 @@ def _render_prompt_format_comparison(run_index: pd.DataFrame) -> None:
         margin=dict(t=50, b=20),
         height=350,
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
     _png_download_button(fig, "prompt_format_comparison.png")

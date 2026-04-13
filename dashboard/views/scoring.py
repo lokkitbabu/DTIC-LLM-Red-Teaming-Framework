@@ -136,7 +136,7 @@ def render_run_scoring_ui(run_data: dict, scoring_dir: Path) -> None:
             available = [c for c in display_cols if c in run_scores.columns]
             st.dataframe(
                 run_scores[available].rename(columns={m: _METRIC_LABELS[m] for m in _METRICS}),
-                use_container_width=True,
+                width='stretch',
                 hide_index=True,
             )
             # Show averages

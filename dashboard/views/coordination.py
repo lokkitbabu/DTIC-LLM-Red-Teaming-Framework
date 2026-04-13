@@ -110,7 +110,7 @@ def _render_coverage_matrix(run_index: pd.DataFrame, scores_df: pd.DataFrame) ->
         filled = sum(1 for r in rows for rtr in raters if "✅" in str(r.get(rtr, "")))
         st.progress(filled / total_cells if total_cells else 0,
                     text=f"{filled} / {total_cells} cells complete ({filled/total_cells*100:.0f}%)")
-        st.dataframe(matrix_df, use_container_width=True, hide_index=True)
+        st.dataframe(matrix_df, width='stretch', hide_index=True)
 
         # Download
         st.download_button(
@@ -159,7 +159,7 @@ def _render_todo_list(run_index: pd.DataFrame, scores_df: pd.DataFrame, scoring_
             st.dataframe(todo.assign(**{"Run ID": todo["run_id"].str[:12] + "…"})
                          .drop(columns=["run_id"])
                          .rename(columns={"model": "Model", "scenario_id": "Scenario"}),
-                         use_container_width=True, hide_index=True)
+                         width='stretch', hide_index=True)
     with col2:
         st.markdown(f"**✅ Scored ({len(done)})**")
         if done.empty:
@@ -168,7 +168,7 @@ def _render_todo_list(run_index: pd.DataFrame, scores_df: pd.DataFrame, scoring_
             st.dataframe(done.assign(**{"Run ID": done["run_id"].str[:12] + "…"})
                          .drop(columns=["run_id"])
                          .rename(columns={"model": "Model", "scenario_id": "Scenario"}),
-                         use_container_width=True, hide_index=True)
+                         width='stretch', hide_index=True)
 
 
 def _render_score_overview(scores_df: pd.DataFrame) -> None:
@@ -178,7 +178,7 @@ def _render_score_overview(scores_df: pd.DataFrame) -> None:
     if "run_id" in display.columns:
         display["run_id"] = display["run_id"].str[:12] + "…"
 
-    st.dataframe(display, use_container_width=True, hide_index=True)
+    st.dataframe(display, width='stretch', hide_index=True)
 
     st.download_button(
         "Download run_scores.csv",

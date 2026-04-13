@@ -113,7 +113,7 @@ def _render_leaderboard(run_index: pd.DataFrame, run_scores_df: pd.DataFrame) ->
     grouped = grouped.rename(columns={"model": "Model", **METRIC_LABELS_FULL})
 
     st.caption(f"Source: {source_label}")
-    st.dataframe(grouped, use_container_width=True, hide_index=True)
+    st.dataframe(grouped, width='stretch', hide_index=True)
 
     colors_seq = px.colors.qualitative.Set2
     fig = go.Figure()
@@ -136,7 +136,7 @@ def _render_leaderboard(run_index: pd.DataFrame, run_scores_df: pd.DataFrame) ->
         yaxis2=dict(title="Total", overlaying="y", side="right", range=[0, 22], showgrid=False),
         legend_title="Metric", margin=dict(t=50, b=20), height=380,
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
     try:
         st.download_button("Download leaderboard PNG", data=fig.to_image(format="png"),
                            file_name="leaderboard.png", mime="image/png")
@@ -163,7 +163,7 @@ def _render_rater_summary(run_scores_df: pd.DataFrame) -> None:
     numeric = run_scores_df[["rater_id"] + [m for m in METRICS if m in run_scores_df.columns]]
     summary = numeric.groupby("rater_id")[[m for m in METRICS if m in numeric.columns]].mean().round(2)
     summary["total_avg"] = summary.mean(axis=1).round(2)
-    st.dataframe(summary.rename(columns=METRIC_LABELS_FULL), use_container_width=True)
+    st.dataframe(summary.rename(columns=METRIC_LABELS_FULL), width='stretch')
 
 
 # ---------------------------------------------------------------------------
@@ -216,7 +216,7 @@ def _render_progress_tracker(run_index: pd.DataFrame, scoring_dir: Path, planned
             )
             pivot.columns.name = None
             pivot.index.name = "Model"
-            st.dataframe(pivot, use_container_width=True)
+            st.dataframe(pivot, width='stretch')
 
 
 # ---------------------------------------------------------------------------
@@ -307,7 +307,7 @@ def _render_score_heatmap(stats: pd.DataFrame, metrics: list[str], title_suffix:
         height=max(250, 80 * len(models) + 100),
     )
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
 
     try:
         img_bytes = fig.to_image(format="png")
@@ -341,7 +341,7 @@ def _render_score_table(stats: pd.DataFrame, metrics: list[str], raw_df: pd.Data
 
     if rows:
         table_df = pd.DataFrame(rows)
-        st.dataframe(table_df, use_container_width=True, hide_index=True)
+        st.dataframe(table_df, width='stretch', hide_index=True)
 
 
 # ---------------------------------------------------------------------------
@@ -377,7 +377,7 @@ def _render_consistency_table(run_index: pd.DataFrame) -> None:
         return
 
     consistency_df = pd.DataFrame(rows)
-    st.dataframe(consistency_df, use_container_width=True, hide_index=True)
+    st.dataframe(consistency_df, width='stretch', hide_index=True)
 
     # Heatmap of std devs
     if len(rows) >= 2:
@@ -425,7 +425,7 @@ def _render_consistency_heatmap(rows: list[dict], metrics: list[str]) -> None:
         height=max(200, 70 * len(labels) + 100),
     )
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
 
 
 # ---------------------------------------------------------------------------
@@ -468,7 +468,7 @@ def _render_export_table(run_index: pd.DataFrame) -> None:
         return
 
     export_df = pd.DataFrame(rows)
-    st.dataframe(export_df, use_container_width=True, hide_index=True)
+    st.dataframe(export_df, width='stretch', hide_index=True)
 
     col1, col2 = st.columns(2)
     with col1:

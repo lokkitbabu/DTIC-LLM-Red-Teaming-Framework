@@ -120,7 +120,7 @@ def render_agreement_view(scoring_dir: Path) -> None:
     )
     display_df.columns = ["Run ID", "Metric", "Cohen's Kappa", "Percent Agreement", "N Raters"]
 
-    st.dataframe(display_df, hide_index=True, use_container_width=True)
+    st.dataframe(display_df, hide_index=True, width='stretch')
 
 
 # ---------------------------------------------------------------------------

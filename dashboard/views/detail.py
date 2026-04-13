@@ -66,7 +66,7 @@ def render_run_detail(
         col_log, col_form = st.columns([1, 1], gap="large")
         with col_log:
             st.markdown("#### Conversation Log")
-            _render_plain_transcript(run_data)
+            render_conversation_log(run_data)
         with col_form:
             st.markdown("#### Per-Turn Scores")
             render_manual_scoring_ui(run_data, manual_scores, scoring_dir)
@@ -217,7 +217,7 @@ def _render_drift_chart(manual_scores: pd.DataFrame) -> None:
         yaxis=dict(range=[1, 5]),
         legend_title="Metric",
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
 
 
 def _build_markdown_report(run_data: dict, manual_scores: pd.DataFrame) -> str:
