@@ -7,9 +7,15 @@ Launch with:
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Optional
 import os
+import sys
+from pathlib import Path
+
+# Ensure the repo root is on sys.path so all package imports work
+# both locally (run from repo root) and on Streamlit Cloud (run from dashboard/)
+_REPO_ROOT = str(Path(__file__).resolve().parent.parent)
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
 
 import streamlit as st
 
