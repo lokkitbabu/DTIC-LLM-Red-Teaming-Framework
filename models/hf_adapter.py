@@ -1,35 +1,37 @@
 import os
-import requests
+from huggingface_hub import InferenceClient
 from models.base import ModelAdapter
 
 
 class HuggingFaceAdapter(ModelAdapter):
-    """Adapter for HuggingFace Inference API."""
+    """Adapter for Hugging Face Inference API via huggingface_hub InferenceClient.
 
-    def __init__(self, model_name: str):
+    Supports:
+    - Inference Providers (serverless): pass a model ID, e.g. "meta-llama/Meta-Llama-3-8B-Instruct"
+    - Inference Endpoints (dedicated): pass the endpoint URL as model_name
+    - Provider routing: set HF_PROVIDER env var (e.g. "together", "sambanova", "groq")
+    """
+
+    def __init__(self, model_name: str = "meta-llama/Meta-Llama-3-8B-Instruct"):
         self.model_name = model_name
-        self.api_token = os.environ.get("HF_API_TOKEN")
-        if not self.api_token:
-            raise EnvironmentError("HF_API_TOKEN environment variable not set")
-        self.base_url = f"https://api-inference.huggingface.co/models/{model_name}"
+        token = os.environ.get("HF_API_TOKEN") or os.environ.get("HF_TOKEN")
+        if not token:
+            raise EnvironmentError(
+                "HF_API_TOKEN (or HF_TOKEN) environment variable not set"
+            )
+        provider = os.environ.get("HF_PROVIDER")  # optional, e.g. "together"
+        self.client = InferenceClient(
+            model=model_name,
+            token=token,
+            provider=provider,  # None → auto-select best available provider
+        )
 
     def generate(self, prompt: str, params: dict) -> str:
-        headers = {"Authorization": f"Bearer {self.api_token}"}
-        payload = {
-            "inputs": prompt,
-            "parameters": {
-                "temperature": params.get("temperature", 0.7),
-                "top_p": params.get("top_p", 0.9),
-                "max_new_tokens": params.get("max_tokens", 512),
-                "return_full_text": False,
-            }
-        }
-
-        response = requests.post(self.base_url, headers=headers, json=payload, timeout=120)
-        response.raise_for_status()
-        result = response.json()
-
-        # HF returns a list of generated texts
-        if isinstance(result, list) and result:
-            return result[0].get("generated_text", "")
-        return str(result)
+        response = self.client.chat_completion(
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=params.get("max_tokens", 512),
+            temperature=params.get("temperature", 0.7),
+            top_p=params.get("top_p", 0.9),
+            seed=params.get("seed"),
+        )
+        return response.choices[0].message.content

@@ -166,7 +166,14 @@ class DataLoader:
         skipped = 0
         records = []
 
+        # Files in logs/ that are not run logs and should never be validated
+        _NON_RUN_FILES = {"flags.json"}
+
         for json_path in sorted(logs_dir.glob("*.json")):
+            # Skip known non-run files (e.g. flags.json)
+            if json_path.name in _NON_RUN_FILES:
+                continue
+
             # Skip anything inside errors/ subdirectory
             try:
                 json_path.relative_to(errors_dir)
@@ -177,6 +184,11 @@ class DataLoader:
             try:
                 with open(json_path, "r", encoding="utf-8") as f:
                     raw = _json.load(f)
+                # Quick pre-check: must be a dict with run_id to be a run log
+                if not isinstance(raw, dict) or "run_id" not in raw:
+                    logger.debug("Skipping %s: not a run log (no run_id key)", json_path.name)
+                    skipped += 1
+                    continue
                 validated = RunLogSchema.model_validate(raw)
             except Exception as exc:
                 logger.warning("Skipping %s: %s", json_path, exc)

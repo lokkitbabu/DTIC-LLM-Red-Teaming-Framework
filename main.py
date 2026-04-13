@@ -53,6 +53,10 @@ def main():
     interviewer_model = build_model(args.interviewer)
 
     runner = ConversationRunner(model, interviewer_model, max_turns=args.max_turns)
+    if scenario.get("format") == "discord_chat":
+        runner = DiscordRunner(model, interviewer_model, max_turns=args.max_turns)
+    else:
+        runner = ConversationRunner(model, interviewer_model, max_turns=args.max_turns)
     print(f"Running scenario '{scenario.get('scenario_id')}' with {repr(model)}...")
 
     run_data = runner.run(scenario)

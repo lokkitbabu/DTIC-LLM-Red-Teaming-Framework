@@ -192,3 +192,8 @@ elif provider == "myprovider":
 ```
 
 4. Use it with `--model myprovider:model-name`.
+
+Senario 1
+- 
+
+Senario 2
