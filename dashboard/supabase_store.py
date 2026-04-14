@@ -311,6 +311,78 @@ class SupabaseStore:
                 fail += 1
         return ok, fail
 
+    # ------------------------------------------------------------------
+    # Tags
+    # ------------------------------------------------------------------
+
+    def get_tags(self, run_id: str) -> list[str]:
+        """Return all tags for a run."""
+        if not self.available:
+            return []
+        try:
+            resp = (
+                self._client.table("run_tags")
+                .select("tag")
+                .eq("run_id", run_id)
+                .execute()
+            )
+            return [r["tag"] for r in (resp.data or [])]
+        except Exception as e:
+            logger.error("get_tags %s failed: %s", run_id, e)
+            return []
+
+    def add_tag(self, run_id: str, tag: str, created_by: str = "") -> bool:
+        """Add a tag to a run (idempotent — ignores duplicates)."""
+        if not self.available:
+            return False
+        try:
+            self._client.table("run_tags").upsert(
+                {"run_id": run_id, "tag": tag.strip().lower(), "created_by": created_by},
+                on_conflict="run_id,tag",
+            ).execute()
+            return True
+        except Exception as e:
+            logger.error("add_tag %s/%s failed: %s", run_id, tag, e)
+            return False
+
+    def remove_tag(self, run_id: str, tag: str) -> bool:
+        """Remove a tag from a run."""
+        if not self.available:
+            return False
+        try:
+            self._client.table("run_tags").delete().eq("run_id", run_id).eq("tag", tag).execute()
+            return True
+        except Exception as e:
+            logger.error("remove_tag %s/%s failed: %s", run_id, tag, e)
+            return False
+
+    def get_all_tags(self) -> list[str]:
+        """Return deduplicated list of all tags across all runs."""
+        if not self.available:
+            return []
+        try:
+            resp = self._client.table("run_tags").select("tag").execute()
+            return sorted({r["tag"] for r in (resp.data or [])})
+        except Exception as e:
+            logger.error("get_all_tags failed: %s", e)
+            return []
+
+    def get_runs_by_tag(self, tag: str) -> list[str]:
+        """Return run_ids that have a given tag."""
+        if not self.available:
+            return []
+        try:
+            resp = (
+                self._client.table("run_tags")
+                .select("run_id")
+                .eq("tag", tag)
+                .execute()
+            )
+            return [r["run_id"] for r in (resp.data or [])]
+        except Exception as e:
+            logger.error("get_runs_by_tag %s failed: %s", tag, e)
+            return []
+
 
 # Module-level singleton — imported once, reused everywhere
 _store: Optional[SupabaseStore] = None

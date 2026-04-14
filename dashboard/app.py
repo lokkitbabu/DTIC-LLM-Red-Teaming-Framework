@@ -240,6 +240,23 @@ flagged_only = st.sidebar.checkbox(
     key="sidebar_flagged_only",
 )
 
+# Tag filter — load available tags from Supabase
+_selected_tags: list[str] = []
+try:
+    from dashboard.supabase_store import get_store as _get_store
+    _store = _get_store()
+    if _store.available:
+        _all_tags = _store.get_all_tags()
+        if _all_tags:
+            _selected_tags = st.sidebar.multiselect(
+                "Filter by tag",
+                options=_all_tags,
+                default=[],
+                key="sidebar_tags",
+            )
+except Exception:
+    pass
+
 # Build new filter state and persist immediately (Req 26.3)
 filter_state: FilterState = {
     "models": selected_models,
@@ -252,6 +269,16 @@ filter_state: FilterState = {
 st.session_state["filter_state"] = filter_state
 
 filtered_index = apply_filters(run_index, filter_state, logs_dir=LOGS_DIR)
+
+# Apply tag filter on top of other filters
+if _selected_tags:
+    try:
+        tagged_ids: set[str] = set()
+        for tag in _selected_tags:
+            tagged_ids.update(_store.get_runs_by_tag(tag))
+        filtered_index = filtered_index[filtered_index["run_id"].isin(tagged_ids)]
+    except Exception:
+        pass
 
 # ---------------------------------------------------------------------------
 # Page routing
