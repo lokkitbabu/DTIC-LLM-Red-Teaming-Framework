@@ -35,8 +35,8 @@ MODEL_PRESETS = {
 }
 
 INTERVIEWER_PRESETS = {
-    "GPT-4.1 (recommended)": "openai:gpt-4.1-2025-04-14",
-    "Grok 4.1 Fast":              "grok:grok-4-1-fast-reasoning",
+    "Grok 4.1 Fast (recommended)": "grok:grok-4-1-fast-reasoning",
+    "GPT-4.1":                     "openai:gpt-4.1-2025-04-14",
 }
 
 JUDGE_PRESETS = {
@@ -266,7 +266,7 @@ def render_run_executor() -> None:
         interviewer_model = st.text_input(
             "Interviewer",
             value=st.session_state.get("re_interviewer_model",
-                                       "openai:gpt-4.1-2025-04-14"),
+                                       "grok:grok-4-1-fast-reasoning"),
             key="re_interviewer_model",
             label_visibility="collapsed",
         )
