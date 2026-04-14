@@ -103,3 +103,15 @@ python main.py --scenario scenarios/example_scenario.json \
   --interviewer together:google/gemma-3-27b-it --judge openai:gpt-4o \
   --session-group my-group-001 --session-number 2
 ```
+
+---
+
+## Further Reading
+
+| Document | Contents |
+|----------|----------|
+| [README.md](../README.md) | Overview, quick start, model table, CLI reference |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System diagrams, prompt formats, data flow |
+| [docs/SCENARIOS.md](docs/SCENARIOS.md) | Scenario design guide, JSON schema, tips |
+| [docs/EVALUATION.md](docs/EVALUATION.md) | Scoring rubric, rater workflow, analysis pipeline |
+| [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) | Adding providers, tests, Supabase schema |
