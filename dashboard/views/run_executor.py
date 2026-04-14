@@ -35,8 +35,8 @@ MODEL_PRESETS = {
 }
 
 INTERVIEWER_PRESETS = {
-    "Llama 4 Maverick (cheap)": "together:meta-llama/Llama-4-Maverick-Instruct-17B-128E",
-    "GPT-4o (best)": "openai:gpt-4o",
+    "Gemma 3 27B (recommended)": "together:google/gemma-3-27b-it",
+    "Llama 4 Maverick":          "together:meta-llama/Llama-4-Maverick-Instruct-17B-128E",
 }
 
 JUDGE_PRESETS = {
@@ -266,7 +266,7 @@ def render_run_executor() -> None:
         interviewer_model = st.text_input(
             "Interviewer",
             value=st.session_state.get("re_interviewer_model",
-                                       "together:meta-llama/Llama-4-Maverick-Instruct-17B-128E"),
+                                       "together:google/gemma-3-27b-it"),
             key="re_interviewer_model",
             label_visibility="collapsed",
         )
