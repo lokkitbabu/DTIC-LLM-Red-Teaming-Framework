@@ -28,7 +28,7 @@ from typing_extensions import TypedDict
 MODEL_PRESETS = {
     "Llama 4 Maverick":  "together:meta-llama/Llama-4-Maverick-Instruct-17B-128E",
     "DeepSeek V3.2":     "together:deepseek-ai/DeepSeek-V3",
-    "Mistral Large 3":   "mistral:mistral-large-latest",
+    "Mistral Large 3":   "together:mistralai/Mistral-Large-Instruct-2411",
     "Claude Sonnet 4.6": "anthropic:claude-sonnet-4-6",
     "GPT-5.4":           "openai:gpt-5.4",
     "Grok 4":            "grok:grok-4-0709",

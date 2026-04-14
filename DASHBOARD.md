@@ -79,8 +79,7 @@ python batch_run.py \
   --models \
     together:meta-llama/Llama-4-Maverick-Instruct-17B-128E \
     together:deepseek-ai/DeepSeek-V3 \
-    mistral:mistral-large-latest \
-    anthropic:claude-sonnet-4-6 \
+    together:mistralai/Mistral-Large-Instruct-2411 \    anthropic:claude-sonnet-4-6 \
     openai:gpt-5.4 \
     grok:grok-4-0709 \
   --interviewer together:meta-llama/Llama-4-Maverick-Instruct-17B-128E \
