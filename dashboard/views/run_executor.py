@@ -35,7 +35,7 @@ MODEL_PRESETS = {
 }
 
 INTERVIEWER_PRESETS = {
-    "Gemma 4 31B (recommended)": "together:google/gemma-4-31b-it-fp8",
+    "Llama 3.3 70B Turbo (recommended)": "together:meta-llama/Llama-3.3-70B-Instruct-Turbo",
     "Llama 3.3 70B Turbo":        "together:meta-llama/Llama-3.3-70B-Instruct-Turbo",
 }
 
@@ -266,7 +266,7 @@ def render_run_executor() -> None:
         interviewer_model = st.text_input(
             "Interviewer",
             value=st.session_state.get("re_interviewer_model",
-                                       "together:google/gemma-4-31b-it-fp8"),
+                                       "together:meta-llama/Llama-3.3-70B-Instruct-Turbo"),
             key="re_interviewer_model",
             label_visibility="collapsed",
         )

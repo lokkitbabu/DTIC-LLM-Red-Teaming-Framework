@@ -107,7 +107,7 @@ Each run can use one of three prompt architectures for the subject model:
 | 5 | **GPT-5.4** | `openai:gpt-5.4` | OpenAI frontier | High |
 | 6 | **Grok 4** | `grok:grok-4-0709` | More permissive frontier | Medium-High |
 
-**Fixed interviewer (not evaluated):** Gemma 3 27B (`together:google/gemma-4-31b-it-fp8`)  
+**Fixed interviewer (not evaluated):** Gemma 3 27B (`together:meta-llama/Llama-3.3-70B-Instruct-Turbo`)  
 **Judge model:** GPT-5.4 (`openai:gpt-5.4`)
 
 ---
@@ -155,7 +155,7 @@ cp .env.example .env
 python main.py \
   --scenario scenarios/terrorism_recruitment_probe.json \
   --model together:meta-llama/Llama-3.3-70B-Instruct-Turbo \
-  --interviewer together:google/gemma-4-31b-it-fp8 \
+  --interviewer together:meta-llama/Llama-3.3-70B-Instruct-Turbo \
   --judge openai:gpt-5.4 \
   --prompt-format flat \
   --max-turns 10
@@ -173,7 +173,7 @@ python batch_run.py \
     anthropic:claude-sonnet-4-6 \
     openai:gpt-5.4 \
     grok:grok-4-0709 \
-  --interviewer together:google/gemma-4-31b-it-fp8 \
+  --interviewer together:meta-llama/Llama-3.3-70B-Instruct-Turbo \
   --judge openai:gpt-5.4 \
   --prompt-formats flat hierarchical xml \
   --runs-per-combo 3 \
@@ -249,14 +249,14 @@ The framework supports **cross-session continuity** — after session N complete
 # Session 1
 python main.py --scenario scenarios/example_scenario.json \
   --model together:meta-llama/Llama-3.3-70B-Instruct-Turbo \
-  --interviewer together:google/gemma-4-31b-it-fp8 \
+  --interviewer together:meta-llama/Llama-3.3-70B-Instruct-Turbo \
   --judge openai:gpt-5.4 \
   --session-group group-001 --session-number 1
 
 # Session 2 — automatically loads memory from session 1
 python main.py --scenario scenarios/example_scenario.json \
   --model together:meta-llama/Llama-3.3-70B-Instruct-Turbo \
-  --interviewer together:google/gemma-4-31b-it-fp8 \
+  --interviewer together:meta-llama/Llama-3.3-70B-Instruct-Turbo \
   --judge openai:gpt-5.4 \
   --session-group group-001 --session-number 2
 ```
