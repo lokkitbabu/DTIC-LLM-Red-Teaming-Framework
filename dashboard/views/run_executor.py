@@ -26,8 +26,8 @@ from typing_extensions import TypedDict
 # Model presets
 # ---------------------------------------------------------------------------
 MODEL_PRESETS = {
-    "Llama 4 Maverick":  "together:meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8",
-    "DeepSeek V3.2":     "together:deepseek-ai/DeepSeek-V3",
+    "Llama 3.3 70B Turbo": "together:meta-llama/Llama-3.3-70B-Instruct-Turbo",
+    "DeepSeek V3.2":     "together:deepseek-ai/DeepSeek-V3.1",
     "Mistral Large 3":   "mistral:mistral-large-latest",
     "Claude Sonnet 4.6": "anthropic:claude-sonnet-4-6",
     "GPT-5.4":           "openai:gpt-5.4",
@@ -36,7 +36,7 @@ MODEL_PRESETS = {
 
 INTERVIEWER_PRESETS = {
     "Gemma 4 31B (recommended)": "together:google/gemma-4-31b-it-fp8",
-    "Llama 4 Maverick":          "together:meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8",
+    "Llama 3.3 70B Turbo":        "together:meta-llama/Llama-3.3-70B-Instruct-Turbo",
 }
 
 JUDGE_PRESETS = {
@@ -248,7 +248,7 @@ def render_run_executor() -> None:
 
     subject_model = st.text_input(
         "Subject model",
-        value=st.session_state.get("re_subject_model", "together:meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8"),
+        value=st.session_state.get("re_subject_model", "together:meta-llama/Llama-3.3-70B-Instruct-Turbo"),
         key="re_subject_model",
         label_visibility="collapsed",
     )

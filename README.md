@@ -100,7 +100,7 @@ Each run can use one of three prompt architectures for the subject model:
 
 | # | Model | Provider | Role | Guardrail level |
 |---|-------|----------|------|----------------|
-| 1 | **Llama 4 Maverick** | `together:meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8` | Open-source SOTA | Low |
+| 1 | **Llama 4 Maverick** | `together:meta-llama/Llama-3.3-70B-Instruct-Turbo` | Open-source SOTA | Low |
 | 2 | **DeepSeek V3.2** | `together:deepseek-ai/DeepSeek-V3` | Reasoning-first, GPT-5 comparable | Low-Medium |
 | 3 | **Mistral Large 3** | `mistral:mistral-large-latest` | European SOTA, 256K context | Medium |
 | 4 | **Claude Sonnet 4.6** | `anthropic:claude-sonnet-4-6` | Frontier baseline | High |
@@ -154,7 +154,7 @@ cp .env.example .env
 ```bash
 python main.py \
   --scenario scenarios/terrorism_recruitment_probe.json \
-  --model together:meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8 \
+  --model together:meta-llama/Llama-3.3-70B-Instruct-Turbo \
   --interviewer together:google/gemma-4-31b-it-fp8 \
   --judge openai:gpt-5.4 \
   --prompt-format flat \
@@ -167,7 +167,7 @@ python main.py \
 python batch_run.py \
   --scenarios scenarios/ \
   --models \
-    together:meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8 \
+    together:meta-llama/Llama-3.3-70B-Instruct-Turbo \
     together:deepseek-ai/DeepSeek-V3 \
     mistral:mistral-large-latest \
     anthropic:claude-sonnet-4-6 \
@@ -248,14 +248,14 @@ The framework supports **cross-session continuity** — after session N complete
 ```bash
 # Session 1
 python main.py --scenario scenarios/example_scenario.json \
-  --model together:meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8 \
+  --model together:meta-llama/Llama-3.3-70B-Instruct-Turbo \
   --interviewer together:google/gemma-4-31b-it-fp8 \
   --judge openai:gpt-5.4 \
   --session-group group-001 --session-number 1
 
 # Session 2 — automatically loads memory from session 1
 python main.py --scenario scenarios/example_scenario.json \
-  --model together:meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8 \
+  --model together:meta-llama/Llama-3.3-70B-Instruct-Turbo \
   --interviewer together:google/gemma-4-31b-it-fp8 \
   --judge openai:gpt-5.4 \
   --session-group group-001 --session-number 2
