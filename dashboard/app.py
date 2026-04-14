@@ -25,7 +25,7 @@ import streamlit as st
 # ---------------------------------------------------------------------------
 _SECRET_KEYS = [
     "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "XAI_API_KEY",
-    "TOGETHER_API_KEY", "HF_API_TOKEN",
+    "TOGETHER_API_KEY", "HF_API_TOKEN", "MISTRAL_API_KEY",
     "SUPABASE_URL", "SUPABASE_KEY",
 ]
 for _k in _SECRET_KEYS:
