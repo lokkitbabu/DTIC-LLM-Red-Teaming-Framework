@@ -66,7 +66,7 @@ def render_run_detail(
         col_log, col_form = st.columns([1, 1], gap="large")
         with col_log:
             st.markdown("#### Conversation Log")
-            render_conversation_log(run_data)
+            render_conversation_log(run_data, key_suffix="_score_tab")
         with col_form:
             st.markdown("#### Per-Turn Scores")
             render_manual_scoring_ui(run_data, manual_scores, scoring_dir)

@@ -62,14 +62,15 @@ _BUBBLE_CSS = """
 """
 
 
-def render_conversation_log(run_data: dict) -> None:
+def render_conversation_log(run_data: dict, key_suffix: str = "") -> None:
     """
     Render the conversation transcript for a run as styled chat bubbles.
 
     Args:
-        run_data: Parsed run log dict. Expected to contain a ``conversation`` list
-                  where each turn has: ``speaker``, ``turn``, ``text``, ``timestamp``,
-                  and optionally ``raw_prompt``.
+        run_data:   Parsed run log dict.
+        key_suffix: Optional suffix appended to widget keys — required when
+                    this function is called more than once for the same run_id
+                    in the same Streamlit script execution (e.g. in two tabs).
     """
     conversation: list[dict] = run_data.get("conversation", [])
     total_turns = len(conversation)
@@ -88,7 +89,7 @@ def render_conversation_log(run_data: dict) -> None:
             max_value=total_turns,
             value=1,
             step=1,
-            key=f"jump_to_turn_{run_data.get('run_id', 'unknown')}",
+            key=f"jump_to_turn_{run_data.get('run_id', 'unknown')}{key_suffix}",
         )
 
     with col_header:
