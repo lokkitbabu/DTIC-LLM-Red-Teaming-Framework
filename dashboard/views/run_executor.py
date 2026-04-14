@@ -31,12 +31,12 @@ MODEL_PRESETS = {
     "Mistral Large 3":   "mistral:mistral-large-latest",
     "Claude Sonnet 4.6": "anthropic:claude-sonnet-4-6",
     "GPT-5.4":           "openai:gpt-5.4",
-    "Grok 4.1 Fast":     "grok:grok-4-1-fast-reasoning",
+    "Grok 4.20":          "grok:grok-4-20",
 }
 
 INTERVIEWER_PRESETS = {
     "GPT-4.1 (recommended)": "openai:gpt-4.1-2025-04-14",
-    "Llama 3.3 70B Turbo":        "together:meta-llama/Llama-3.3-70B-Instruct-Turbo",
+    "Grok 4.1 Fast":              "grok:grok-4-1-fast-reasoning",
 }
 
 JUDGE_PRESETS = {

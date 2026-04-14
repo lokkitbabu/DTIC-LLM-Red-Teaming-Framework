@@ -105,7 +105,7 @@ Each run can use one of three prompt architectures for the subject model:
 | 3 | **Mistral Large 3** | `mistral:mistral-large-latest` | European SOTA, 256K context | Medium |
 | 4 | **Claude Sonnet 4.6** | `anthropic:claude-sonnet-4-6` | Frontier baseline | High |
 | 5 | **GPT-5.4** | `openai:gpt-5.4` | OpenAI frontier | High |
-| 6 | **Grok 4** | `grok:grok-4-1-fast-reasoning` | More permissive frontier | Medium-High |
+| 6 | **Grok 4** | `grok:grok-4-20` | More permissive frontier | Medium-High |
 
 **Fixed interviewer (not evaluated):** Gemma 3 27B (`openai:gpt-4.1-2025-04-14`)  
 **Judge model:** GPT-5.4 (`openai:gpt-5.4`)
@@ -172,7 +172,7 @@ python batch_run.py \
     mistral:mistral-large-latest \
     anthropic:claude-sonnet-4-6 \
     openai:gpt-5.4 \
-    grok:grok-4-1-fast-reasoning \
+    grok:grok-4-20 \
   --interviewer openai:gpt-4.1-2025-04-14 \
   --judge openai:gpt-5.4 \
   --prompt-formats flat hierarchical xml \
