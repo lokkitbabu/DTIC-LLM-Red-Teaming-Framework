@@ -29,18 +29,43 @@ class TogetherAdapter(ModelAdapter):
             top_p=params.get("top_p", 0.9),
             max_tokens=max(16, params.get("max_tokens", 512)),
         )
-        content = response.choices[0].message.content or ""
 
-        # Gemma 4 (and other reasoning models) may wrap output in <think>...</think>
-        # blocks. Strip the thinking section and return only the final response.
+        choice = response.choices[0]
+        content = choice.message.content or ""
+
+        # --- Observability: log raw response for debugging ---
+        raw_len = len(content)
+        finish = getattr(choice, "finish_reason", "unknown")
+        reasoning = getattr(choice.message, "reasoning_content", None)
+        print(
+            f"    [together/{self.model_name.split('/')[-1]}] "
+            f"finish={finish} raw_len={raw_len} "
+            f"has_reasoning={reasoning is not None}",
+            flush=True,
+        )
+        if raw_len < 10:
+            # Log first 200 chars of raw content and reasoning so we can diagnose
+            print(f"    [RAW content repr]: {repr(content[:200])}", flush=True)
+            if reasoning:
+                print(f"    [RAW reasoning repr]: {repr(reasoning[:200])}", flush=True)
+
+        # Gemma 4 and other reasoning models wrap output in <think>...</think>.
+        # Strip thinking sections and return only the final response.
         content = self._strip_thinking(content)
 
-        # Some models return empty .content but put text in reasoning_content.
-        # Fall back to that if the main content is empty.
+        # Fallback: if content is empty, try reasoning_content field
+        if not content.strip() and reasoning:
+            print(f"    [fallback to reasoning_content]", flush=True)
+            content = self._strip_thinking(reasoning).strip()
+
+        # Last resort: if still empty, log a clear warning
         if not content.strip():
-            extra = getattr(response.choices[0].message, "reasoning_content", None)
-            if extra:
-                content = extra.strip()
+            print(
+                f"    [WARNING] {self.model_name} returned empty response "
+                f"(finish={finish}, raw_len={raw_len}). "
+                f"Check Together AI playground for this model.",
+                flush=True,
+            )
 
         return content
 

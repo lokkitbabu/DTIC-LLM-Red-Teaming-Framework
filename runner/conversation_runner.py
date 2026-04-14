@@ -94,7 +94,9 @@ class ConversationRunner:
                 if next_probe.startswith(prefix):
                     next_probe = next_probe[len(prefix):].strip()
                     break
-            print(f"  turn {turn + 1} interviewer done ({len(next_probe)} chars)", flush=True)
+            # Show first 80 chars of response so empty strings are immediately visible
+            preview = repr(next_probe[:80]) if next_probe else "⚠ EMPTY"
+            print(f"  turn {turn + 1} interviewer done ({len(next_probe)} chars) → {preview}", flush=True)
 
             conversation.append({
                 "turn": turn + 1,
