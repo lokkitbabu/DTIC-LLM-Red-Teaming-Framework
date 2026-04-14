@@ -26,11 +26,12 @@ from typing_extensions import TypedDict
 # Model presets
 # ---------------------------------------------------------------------------
 MODEL_PRESETS = {
-    "Llama 4 Maverick": "together:meta-llama/Llama-4-Maverick-Instruct-17B-128E",
-    "Nous Hermes 3 70B": "together:NousResearch/Hermes-3-Llama-3.1-70B",
-    "DeepSeek V3": "together:deepseek-ai/DeepSeek-V3",
-    "GPT-4o": "openai:gpt-4o",
-    "Grok-3": "grok:grok-3",
+    "Llama 4 Maverick":  "together:meta-llama/Llama-4-Maverick-Instruct-17B-128E",
+    "DeepSeek V3.2":     "together:deepseek-ai/DeepSeek-V3",
+    "Mistral Large 3":   "mistral:mistral-large-latest",
+    "Claude Sonnet 4.6": "anthropic:claude-sonnet-4-6",
+    "GPT-5.4":           "openai:gpt-5.4",
+    "Grok 4":            "grok:grok-4-0709",
 }
 
 INTERVIEWER_PRESETS = {
@@ -39,7 +40,8 @@ INTERVIEWER_PRESETS = {
 }
 
 JUDGE_PRESETS = {
-    "GPT-4o": "openai:gpt-4o",
+    "GPT-5.4": "openai:gpt-5.4",
+    "Claude Sonnet 4.6": "anthropic:claude-sonnet-4-6",
     "None": "",
 }
 
@@ -305,7 +307,7 @@ def render_run_executor() -> None:
 
     if run_mode == "All 3 formats × 3 runs":
         total_planned = 9
-        btn_label = f"🚀 Launch batch ({total_planned} runs)"
+        btn_label = f"🚀 Launch batch (9 runs — current model × all formats)"
     else:
         total_planned = 1
         btn_label = "▶ Run"

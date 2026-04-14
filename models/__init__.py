@@ -5,6 +5,7 @@ from models.openai_adapter import OpenAIAdapter
 from models.anthropic_adapter import AnthropicAdapter
 from models.grok_adapter import GrokAdapter
 from models.together_adapter import TogetherAdapter
+from models.mistral_adapter import MistralAdapter
 
 __all__ = [
     "ModelAdapter",
@@ -14,4 +15,5 @@ __all__ = [
     "AnthropicAdapter",
     "GrokAdapter",
     "TogetherAdapter",
+    "MistralAdapter",
 ]

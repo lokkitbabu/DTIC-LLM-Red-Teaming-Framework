@@ -72,18 +72,19 @@ python main.py \
   --prompt-format flat
 ```
 
-### Full batch (5 models × 2 scenarios × 3 runs, all prompt formats)
+### Full batch (6 models × 2 scenarios × 3 formats × 3 runs = 108 runs)
 ```bash
 python batch_run.py \
   --scenarios scenarios/ \
   --models \
     together:meta-llama/Llama-4-Maverick-Instruct-17B-128E \
-    together:NousResearch/Hermes-3-Llama-3.1-70B \
     together:deepseek-ai/DeepSeek-V3 \
-    openai:gpt-4o \
-    grok:grok-3 \
+    mistral:mistral-large-latest \
+    anthropic:claude-sonnet-4-6 \
+    openai:gpt-5.4 \
+    grok:grok-4-0709 \
   --interviewer together:meta-llama/Llama-4-Maverick-Instruct-17B-128E \
-  --judge openai:gpt-4o \
+  --judge openai:gpt-5.4 \
   --prompt-formats flat hierarchical xml \
   --runs-per-combo 3 \
   --max-turns 40

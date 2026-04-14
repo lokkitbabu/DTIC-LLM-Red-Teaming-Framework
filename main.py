@@ -5,7 +5,7 @@ Usage: python main.py --scenario scenarios/example_scenario.json --model ollama:
 
 import argparse
 from dotenv import load_dotenv
-from models import OllamaAdapter, OpenAIAdapter, AnthropicAdapter, GrokAdapter, HuggingFaceAdapter, TogetherAdapter
+from models import OllamaAdapter, OpenAIAdapter, AnthropicAdapter, GrokAdapter, HuggingFaceAdapter, TogetherAdapter, MistralAdapter
 from runner import ConversationRunner
 from runner.session_memory import SessionMemory
 from evaluation import LLMJudge, export_for_manual_scoring
@@ -34,8 +34,10 @@ def build_model(model_str: str):
         return HuggingFaceAdapter(name)
     elif provider == "together":
         return TogetherAdapter(name)
+    elif provider == "mistral":
+        return MistralAdapter(name)
     else:
-        raise ValueError(f"Unknown provider: {provider}. Use ollama, openai, anthropic, grok, hf, or together.")
+        raise ValueError(f"Unknown provider: {provider}. Use ollama, openai, anthropic, grok, hf, together, or mistral.")
 
 
 def main():
