@@ -100,14 +100,14 @@ Each run can use one of three prompt architectures for the subject model:
 
 | # | Model | Provider | Role | Guardrail level |
 |---|-------|----------|------|----------------|
-| 1 | **Llama 4 Maverick** | `together:meta-llama/Llama-4-Maverick-Instruct-17B-128E` | Open-source SOTA | Low |
+| 1 | **Llama 4 Maverick** | `together:meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8` | Open-source SOTA | Low |
 | 2 | **DeepSeek V3.2** | `together:deepseek-ai/DeepSeek-V3` | Reasoning-first, GPT-5 comparable | Low-Medium |
-| 3 | **Mistral Large 3** | `together:mistralai/Mistral-Large-Instruct-2411` | European SOTA, 256K context | Medium |
+| 3 | **Mistral Large 3** | `mistral:mistral-large-latest` | European SOTA, 256K context | Medium |
 | 4 | **Claude Sonnet 4.6** | `anthropic:claude-sonnet-4-6` | Frontier baseline | High |
 | 5 | **GPT-5.4** | `openai:gpt-5.4` | OpenAI frontier | High |
 | 6 | **Grok 4** | `grok:grok-4-0709` | More permissive frontier | Medium-High |
 
-**Fixed interviewer (not evaluated):** Gemma 3 27B (`together:google/gemma-3-27b-it`)  
+**Fixed interviewer (not evaluated):** Gemma 3 27B (`together:meta-llama/Llama-3.3-70B-Instruct-Turbo`)  
 **Judge model:** GPT-5.4 (`openai:gpt-5.4`)
 
 ---
@@ -154,8 +154,8 @@ cp .env.example .env
 ```bash
 python main.py \
   --scenario scenarios/terrorism_recruitment_probe.json \
-  --model together:meta-llama/Llama-4-Maverick-Instruct-17B-128E \
-  --interviewer together:google/gemma-3-27b-it \
+  --model together:meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8 \
+  --interviewer together:meta-llama/Llama-3.3-70B-Instruct-Turbo \
   --judge openai:gpt-5.4 \
   --prompt-format flat \
   --max-turns 10
@@ -167,13 +167,13 @@ python main.py \
 python batch_run.py \
   --scenarios scenarios/ \
   --models \
-    together:meta-llama/Llama-4-Maverick-Instruct-17B-128E \
+    together:meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8 \
     together:deepseek-ai/DeepSeek-V3 \
-    together:mistralai/Mistral-Large-Instruct-2411 \
+    mistral:mistral-large-latest \
     anthropic:claude-sonnet-4-6 \
     openai:gpt-5.4 \
     grok:grok-4-0709 \
-  --interviewer together:google/gemma-3-27b-it \
+  --interviewer together:meta-llama/Llama-3.3-70B-Instruct-Turbo \
   --judge openai:gpt-5.4 \
   --prompt-formats flat hierarchical xml \
   --runs-per-combo 3 \
@@ -248,15 +248,15 @@ The framework supports **cross-session continuity** — after session N complete
 ```bash
 # Session 1
 python main.py --scenario scenarios/example_scenario.json \
-  --model together:meta-llama/Llama-4-Maverick-Instruct-17B-128E \
-  --interviewer together:google/gemma-3-27b-it \
+  --model together:meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8 \
+  --interviewer together:meta-llama/Llama-3.3-70B-Instruct-Turbo \
   --judge openai:gpt-5.4 \
   --session-group group-001 --session-number 1
 
 # Session 2 — automatically loads memory from session 1
 python main.py --scenario scenarios/example_scenario.json \
-  --model together:meta-llama/Llama-4-Maverick-Instruct-17B-128E \
-  --interviewer together:google/gemma-3-27b-it \
+  --model together:meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8 \
+  --interviewer together:meta-llama/Llama-3.3-70B-Instruct-Turbo \
   --judge openai:gpt-5.4 \
   --session-group group-001 --session-number 2
 ```

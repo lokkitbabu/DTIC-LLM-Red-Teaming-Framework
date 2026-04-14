@@ -26,17 +26,17 @@ from typing_extensions import TypedDict
 # Model presets
 # ---------------------------------------------------------------------------
 MODEL_PRESETS = {
-    "Llama 4 Maverick":  "together:meta-llama/Llama-4-Maverick-Instruct-17B-128E",
+    "Llama 4 Maverick":  "together:meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8",
     "DeepSeek V3.2":     "together:deepseek-ai/DeepSeek-V3",
-    "Mistral Large 3":   "together:mistralai/Mistral-Large-Instruct-2411",
+    "Mistral Large 3":   "mistral:mistral-large-latest",
     "Claude Sonnet 4.6": "anthropic:claude-sonnet-4-6",
     "GPT-5.4":           "openai:gpt-5.4",
     "Grok 4":            "grok:grok-4-0709",
 }
 
 INTERVIEWER_PRESETS = {
-    "Gemma 3 27B (recommended)": "together:google/gemma-3-27b-it",
-    "Llama 4 Maverick":          "together:meta-llama/Llama-4-Maverick-Instruct-17B-128E",
+    "Llama 3.3 70B Turbo (recommended)": "together:meta-llama/Llama-3.3-70B-Instruct-Turbo",
+    "Llama 4 Maverick":          "together:meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8",
 }
 
 JUDGE_PRESETS = {
@@ -248,7 +248,7 @@ def render_run_executor() -> None:
 
     subject_model = st.text_input(
         "Subject model",
-        value=st.session_state.get("re_subject_model", "together:meta-llama/Llama-4-Maverick-Instruct-17B-128E"),
+        value=st.session_state.get("re_subject_model", "together:meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8"),
         key="re_subject_model",
         label_visibility="collapsed",
     )
@@ -266,7 +266,7 @@ def render_run_executor() -> None:
         interviewer_model = st.text_input(
             "Interviewer",
             value=st.session_state.get("re_interviewer_model",
-                                       "together:google/gemma-3-27b-it"),
+                                       "together:meta-llama/Llama-3.3-70B-Instruct-Turbo"),
             key="re_interviewer_model",
             label_visibility="collapsed",
         )

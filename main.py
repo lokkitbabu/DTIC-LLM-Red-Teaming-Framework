@@ -43,7 +43,7 @@ def build_model(model_str: str):
 def main():
     parser = argparse.ArgumentParser(description="Run a single DTIC Offset evaluation scenario")
     parser.add_argument("--scenario", required=True, help="Path to scenario JSON file")
-    parser.add_argument("--model", required=True, help="Subject model, e.g. together:meta-llama/Llama-4-Maverick-Instruct-17B-128E")
+    parser.add_argument("--model", required=True, help="Subject model, e.g. together:meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8")
     parser.add_argument("--interviewer", required=True, help="Interviewer model, e.g. openai:gpt-4o")
     parser.add_argument("--judge", default=None, help="Optional judge model for automated scoring")
     parser.add_argument("--eval-target", default="subject", choices=["subject", "interviewer"],
