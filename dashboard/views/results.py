@@ -454,13 +454,13 @@ def _render_export_table(run_index: pd.DataFrame) -> None:
             val = row.get(m)
             llm_val = row.get(f"llm_{m}")
             man_val = row.get(f"manual_{m}")
-            r[f"LLM {METRIC_LABELS_FULL[m]}"] = round(float(llm_val), 2) if llm_val is not None and not pd.isna(llm_val) else ""
-            r[f"Manual {METRIC_LABELS_FULL[m]}"] = round(float(man_val), 2) if man_val is not None and not pd.isna(man_val) else ""
-            r[f"Combined {METRIC_LABELS_FULL[m]}"] = round(float(val), 2) if val is not None and not pd.isna(val) else ""
+            r[f"LLM {METRIC_LABELS_FULL[m]}"] = round(float(llm_val), 2) if llm_val is not None and not pd.isna(llm_val) else None
+            r[f"Manual {METRIC_LABELS_FULL[m]}"] = round(float(man_val), 2) if man_val is not None and not pd.isna(man_val) else None
+            r[f"Combined {METRIC_LABELS_FULL[m]}"] = round(float(val), 2) if val is not None and not pd.isna(val) else None
             if val is not None and not pd.isna(val):
                 total += float(val)
                 scored += 1
-        r["Total Score"] = round(total, 2) if scored > 0 else ""
+        r["Total Score"] = round(total, 2) if scored > 0 else None
         rows.append(r)
 
     if not rows:
