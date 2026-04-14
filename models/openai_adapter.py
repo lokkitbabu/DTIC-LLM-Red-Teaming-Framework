@@ -1,25 +1,33 @@
 import os
 import re
 import time
-from openai import OpenAI, RateLimitError
+from openai import OpenAI, RateLimitError, APIStatusError
 from models.base import ModelAdapter
 
-# Reasoning models that don't support temperature/top_p sampling params
 _REASONING_MODEL_PREFIXES = ("gpt-5", "o1", "o3", "o4")
-_MAX_RETRIES = 5
-_BASE_WAIT = 5.0   # seconds
+_MAX_RETRIES = 8
+_MIN_WAIT = 5.0
+_MAX_WAIT = 90.0
 
 
 def _is_reasoning_model(model_name: str) -> bool:
     return any(model_name.startswith(p) for p in _REASONING_MODEL_PREFIXES)
 
 
+def _is_rate_limit(exc: Exception) -> bool:
+    """Match both RateLimitError and any 429 APIStatusError."""
+    if isinstance(exc, RateLimitError):
+        return True
+    if isinstance(exc, APIStatusError) and exc.status_code == 429:
+        return True
+    return False
+
+
 def _retry_wait(error_message: str, attempt: int) -> float:
-    """Extract retry-after from error message or use exponential backoff."""
+    """Parse suggested wait from error message, then clamp to bounds."""
     match = re.search(r"try again in ([0-9.]+)s", error_message)
-    if match:
-        return float(match.group(1)) + 0.5   # add small buffer
-    return _BASE_WAIT * (2 ** attempt)       # 5s, 10s, 20s, 40s, 80s
+    suggested = float(match.group(1)) + 1.0 if match else _MIN_WAIT * (2 ** attempt)
+    return min(max(suggested, _MIN_WAIT), _MAX_WAIT)
 
 
 class OpenAIAdapter(ModelAdapter):
@@ -42,14 +50,16 @@ class OpenAIAdapter(ModelAdapter):
             kwargs["temperature"] = params.get("temperature", 0.7)
             kwargs["top_p"] = params.get("top_p", 0.9)
 
+        last_exc = None
         for attempt in range(_MAX_RETRIES):
             try:
                 response = self.client.responses.create(**kwargs)
                 return response.output_text
 
-            except RateLimitError as e:
-                if attempt == _MAX_RETRIES - 1:
+            except Exception as e:
+                if not _is_rate_limit(e):
                     raise
+                last_exc = e
                 wait = _retry_wait(str(e), attempt)
                 print(
                     f"    [openai/{self.model_name}] rate limit — "
@@ -58,4 +68,4 @@ class OpenAIAdapter(ModelAdapter):
                 )
                 time.sleep(wait)
 
-        return ""  # unreachable but satisfies type checker
+        raise last_exc
