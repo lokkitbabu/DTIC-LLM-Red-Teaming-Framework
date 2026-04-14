@@ -123,22 +123,38 @@ def render_score_runs_view(
         return
 
     # Run metadata strip
-    meta_cols = st.columns(4)
-    meta_cols[0].metric("Scenario", run_data.get("scenario_id", "—"))
-    meta_cols[1].metric("Model", str(run_data.get("subject_model", "—")).split("/")[-1])
-    meta_cols[2].metric("Format", run_data.get("params", {}).get("prompt_format") or "—")
+    subject_model = str(run_data.get("subject_model", "—")).split("(model=")[-1].rstrip(")").split("/")[-1]
+    interviewer_model = str(run_data.get("interviewer_model", "—")).split("(model=")[-1].rstrip(")").split("/")[-1]
     turns = len(run_data.get("conversation", []))
-    meta_cols[3].metric("Turns", turns)
+    meta = run_data.get("metadata", {})
+
+    m1, m2, m3, m4, m5, m6 = st.columns(6)
+    m1.metric("Scenario", run_data.get("scenario_id", "—"))
+    m2.metric("Subject", subject_model[:20])
+    m3.metric("Interviewer", interviewer_model[:20])
+    m4.metric("Format", run_data.get("params", {}).get("prompt_format") or
+              str(run_data.get("prompt_format", "—")))
+    m5.metric("Turns", turns)
+    m6.metric("Stop reason", meta.get("stop_reason", "—"))
 
     st.markdown("---")
 
-    # Override the rater_id in session state to match the global picker
-    # so render_run_scoring_ui picks it up
+    # Override rater so render_run_scoring_ui picks up the global picker
     rater_key = f"run_score_rater_{selected_run_id}"
     if rater_id and st.session_state.get(rater_key, "") != rater_id:
         st.session_state[rater_key] = rater_id
 
-    render_run_scoring_ui(run_data, scoring_dir)
+    # ── Three tabs ───────────────────────────────────────────────────────────
+    tab_score, tab_convo, tab_detail = st.tabs(["📊 Score", "💬 Conversation", "🔍 Details"])
+
+    with tab_score:
+        render_run_scoring_ui(run_data, scoring_dir)
+
+    with tab_convo:
+        _render_full_conversation(run_data, selected_run_id)
+
+    with tab_detail:
+        _render_run_details(run_data)
 
 
 def _load_run(run_id: str, logs_dir: Path) -> dict | None:
@@ -163,3 +179,130 @@ def _load_run(run_id: str, logs_dir: Path) -> dict | None:
         pass
 
     return None
+
+
+# ---------------------------------------------------------------------------
+# Conversation tab
+# ---------------------------------------------------------------------------
+
+def _render_full_conversation(run_data: dict, run_id: str) -> None:
+    conversation = run_data.get("conversation", [])
+    if not conversation:
+        st.info("No conversation turns recorded.")
+        return
+
+    total = len(conversation)
+    st.caption(f"{total} turns  ·  scroll to read")
+
+    # Jump control
+    col_j, _ = st.columns([2, 5])
+    with col_j:
+        jump = st.number_input(
+            "Jump to turn",
+            min_value=1, max_value=total, value=1, step=1,
+            key=f"sr_jump_{run_id}",
+        )
+
+    # Subject = right-aligned blue, Interviewer = left-aligned grey
+    subject_style = (
+        "background:#1a3a5c;color:#e8f4ff;border-radius:12px;"
+        "padding:10px 14px;margin:4px 0 4px 80px;font-size:0.92em;"
+    )
+    interviewer_style = (
+        "background:#2a2a2a;color:#d0d0d0;border-radius:12px;"
+        "padding:10px 14px;margin:4px 80px 4px 0;font-size:0.92em;"
+    )
+
+    for turn_data in conversation[int(jump) - 1:]:
+        t = turn_data.get("turn", "?")
+        speaker = turn_data.get("speaker", "?")
+        text = turn_data.get("text", "").strip()
+        ts = str(turn_data.get("timestamp", ""))[:16]
+
+        if speaker == "subject":
+            st.markdown(
+                f"<div style='{subject_style}'>"
+                f"<span style='opacity:0.6;font-size:0.8em'>Turn {t} · {speaker} · {ts}</span><br>{text}"
+                f"</div>",
+                unsafe_allow_html=True,
+            )
+            raw = turn_data.get("raw_prompt", "")
+            if raw:
+                with st.expander(f"  Raw prompt (turn {t})", expanded=False):
+                    st.code(raw[:2000], language=None)
+        else:
+            st.markdown(
+                f"<div style='{interviewer_style}'>"
+                f"<span style='opacity:0.6;font-size:0.8em'>Turn {t} · {speaker} · {ts}</span><br>{text}"
+                f"</div>",
+                unsafe_allow_html=True,
+            )
+
+
+# ---------------------------------------------------------------------------
+# Details tab
+# ---------------------------------------------------------------------------
+
+def _render_run_details(run_data: dict) -> None:
+    import json as _json
+
+    st.markdown("#### Run metadata")
+    meta = run_data.get("metadata", {})
+    m1, m2, m3 = st.columns(3)
+    m1.metric("Total turns", meta.get("total_turns", "—"))
+    m2.metric("Stop reason", meta.get("stop_reason", "—"))
+    m3.metric("Context trims", meta.get("context_trims", 0))
+
+    st.markdown("#### Models")
+    st.markdown(f"**Subject:** `{run_data.get('subject_model', '—')}`")
+    st.markdown(f"**Interviewer:** `{run_data.get('interviewer_model', '—')}`")
+    st.markdown(f"**Language:** `{run_data.get('language', 'english')}`")
+
+    st.markdown("#### Generation params")
+    params = run_data.get("params", {})
+    if params:
+        p1, p2, p3, p4 = st.columns(4)
+        p1.metric("Temperature", params.get("temperature", "—"))
+        p2.metric("Top-p", params.get("top_p", "—"))
+        p3.metric("Max tokens", params.get("max_tokens", "—"))
+        p4.metric("Seed", params.get("seed", "—"))
+
+    st.markdown("#### LLM judge scores")
+    scores = run_data.get("scores", {})
+    judge = scores.get("llm_judge", {})
+    if judge:
+        judge_scores = judge.get("scores", judge) if isinstance(judge, dict) else {}
+        if judge_scores:
+            jc = st.columns(4)
+            for i, m in enumerate(["identity_consistency", "cultural_authenticity", "naturalness", "information_yield"]):
+                v = judge_scores.get(m)
+                jc[i].metric(m.replace("_", " ").title(), f"{v}/5" if v else "—")
+            reasoning = judge.get("reasoning", "")
+            if reasoning:
+                with st.expander("Judge reasoning", expanded=False):
+                    st.write(reasoning[:2000])
+
+    # Additional judges from multi-judge runs
+    judges = scores.get("judges", {})
+    if judges:
+        st.markdown("#### All judge scores")
+        for jmodel, jresult in judges.items():
+            if isinstance(jresult, dict):
+                js = jresult.get("scores", jresult)
+                total = sum(v for v in js.values() if isinstance(v, (int, float)))
+                st.markdown(f"**`{jmodel}`** — total: {total}/20")
+                jc2 = st.columns(4)
+                for i, m in enumerate(["identity_consistency", "cultural_authenticity", "naturalness", "information_yield"]):
+                    jc2[i].metric(m.replace("_", " ").title(), f"{js.get(m, '—')}/5")
+
+    st.markdown("#### Safety flags")
+    flags = scores.get("safety_flags", run_data.get("safety_flags", []))
+    if flags:
+        for f in flags:
+            st.warning(str(f))
+    else:
+        st.success("No safety flags.")
+
+    st.markdown("---")
+    with st.expander("Raw JSON", expanded=False):
+        st.code(_json.dumps(run_data, indent=2, default=str)[:8000], language="json")
