@@ -17,6 +17,7 @@ _REPO_ROOT = str(Path(__file__).resolve().parent.parent)
 if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
+import time
 import streamlit as st
 
 # ---------------------------------------------------------------------------
@@ -324,3 +325,11 @@ elif page == "Agreement":
 
 elif page == "Scenarios":
     render_scenarios_view(SCENARIOS_DIR)
+
+# ---------------------------------------------------------------------------
+# Top-level polling loop for live run progress
+# Must be at module level so st.rerun() actually fires
+# ---------------------------------------------------------------------------
+if st.session_state.pop("_needs_rerun", False):
+    time.sleep(0.8)
+    st.rerun()

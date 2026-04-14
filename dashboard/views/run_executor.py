@@ -330,9 +330,9 @@ def render_run_executor() -> None:
 
     _render_status(run_state)
 
+    # Store a flag so app.py top-level can trigger the rerun
     if run_state.get("running"):
-        time.sleep(0.6)
-        st.rerun()
+        st.session_state["_needs_rerun"] = True
 
 
 # ---------------------------------------------------------------------------
