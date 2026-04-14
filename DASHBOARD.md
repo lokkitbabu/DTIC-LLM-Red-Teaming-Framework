@@ -66,8 +66,8 @@ When Supabase is not configured, the dashboard falls back to reading local `logs
 ```bash
 python main.py \
   --scenario scenarios/example_scenario.json \
-  --model together:meta-llama/Llama-3.3-70B-Instruct-Turbo \
-  --interviewer together:meta-llama/Llama-3.3-70B-Instruct-Turbo \
+  --model together:google/gemma-4-31B-it \
+  --interviewer together:google/gemma-4-31B-it \
   --judge openai:gpt-4o \
   --prompt-format flat
 ```
@@ -77,12 +77,12 @@ python main.py \
 python batch_run.py \
   --scenarios scenarios/ \
   --models \
-    together:meta-llama/Llama-3.3-70B-Instruct-Turbo \
+    together:google/gemma-4-31B-it \
     together:deepseek-ai/DeepSeek-V3 \
     mistral:mistral-large-latest \    anthropic:claude-sonnet-4-6 \
     openai:gpt-5.4 \
     grok:grok-4-0709 \
-  --interviewer together:meta-llama/Llama-3.3-70B-Instruct-Turbo \
+  --interviewer together:google/gemma-4-31B-it \
   --judge openai:gpt-5.4 \
   --prompt-formats flat hierarchical xml \
   --runs-per-combo 3 \
@@ -93,14 +93,14 @@ python batch_run.py \
 ```bash
 # Session 1
 python main.py --scenario scenarios/example_scenario.json \
-  --model together:meta-llama/Llama-3.3-70B-Instruct-Turbo \
-  --interviewer together:meta-llama/Llama-3.3-70B-Instruct-Turbo --judge openai:gpt-4o \
+  --model together:google/gemma-4-31B-it \
+  --interviewer together:google/gemma-4-31B-it --judge openai:gpt-4o \
   --session-group my-group-001 --session-number 1
 
 # Session 2 — automatically loads memory from session 1
 python main.py --scenario scenarios/example_scenario.json \
-  --model together:meta-llama/Llama-3.3-70B-Instruct-Turbo \
-  --interviewer together:meta-llama/Llama-3.3-70B-Instruct-Turbo --judge openai:gpt-4o \
+  --model together:google/gemma-4-31B-it \
+  --interviewer together:google/gemma-4-31B-it --judge openai:gpt-4o \
   --session-group my-group-001 --session-number 2
 ```
 
