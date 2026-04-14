@@ -40,6 +40,7 @@ from dashboard.views.charts import render_aggregate_charts
 from dashboard.views.comparison import render_comparison_view
 from dashboard.views.run_executor import render_run_executor
 from dashboard.views.prune import render_prune_view
+from dashboard.views.score_runs import render_score_runs_view
 from dashboard.views.agreement import render_agreement_view
 from dashboard.views.scenarios import render_scenarios_view
 from dashboard.views.results import render_results_view
@@ -99,7 +100,7 @@ st.sidebar.title("Analytics Dashboard")
 
 page = st.sidebar.radio(
     "Navigate",
-    options=["Results", "Coordination", "Summary", "Run Detail", "Charts", "Compare", "Run Scenario", "Agreement", "Scenarios", "Prune Runs"],
+    options=["Results", "Coordination", "Summary", "Run Detail", "Charts", "Compare", "Run Scenario", "Score Runs", "Agreement", "Scenarios", "Prune Runs"],
 )
 
 if st.sidebar.button("🔄 Refresh"):
@@ -347,6 +348,9 @@ elif page == "Compare":
 
 elif page == "Run Scenario":
     render_run_executor()
+
+elif page == "Score Runs":
+    render_score_runs_view(filtered_index, logs_dir=LOGS_DIR, scoring_dir=SCORING_DIR)
 
 elif page == "Agreement":
     render_agreement_view(SCORING_DIR)

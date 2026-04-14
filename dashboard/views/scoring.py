@@ -36,9 +36,11 @@ _RUBRIC_HINTS = {
 _RATER_IDS = ["Z", "L", "N", "S"]
 
 _PRESET_TAGS = [
-    "interesting", "clean-run", "needs-review", "broke-character",
-    "strong-persona", "operational-content", "refusal", "drift-detected",
-    "invalid", "rerun-needed",
+    "clean-run",
+    "refusal",
+    "re-run",
+    "40-turns",
+    "long-term-scenario",
 ]
 
 
