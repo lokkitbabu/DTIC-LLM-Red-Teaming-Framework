@@ -22,12 +22,19 @@ class TogetherAdapter(ModelAdapter):
 
     def generate(self, prompt: str, params: dict) -> str:
         messages = self._parse_prompt(prompt)
+
+        # Extra kwargs forwarded to the API (e.g. thinking_budget for Gemma 4)
+        extra: dict = {}
+        if "thinking_budget" in params:
+            extra["thinking_budget"] = params["thinking_budget"]
+
         response = self.client.chat.completions.create(
             model=self.model_name,
             messages=messages,
             temperature=params.get("temperature", 0.7),
             top_p=params.get("top_p", 0.9),
             max_tokens=max(16, params.get("max_tokens", 512)),
+            **extra,
         )
 
         choice = response.choices[0]

@@ -88,7 +88,17 @@ class ConversationRunner:
             interviewer_prompt = self._build_interviewer_prompt(scenario, conversation)
 
             print(f"  turn {turn + 1}/{self.max_turns} — interviewer model...", flush=True)
-            next_probe = self.interviewer_model.generate(interviewer_prompt, params)
+            # Interviewer gets a larger token budget than the subject — reasoning
+            # models like Gemma 4 consume tokens on internal thinking before generating
+            # the actual response. 256 tokens is often fully consumed by thinking alone.
+            interviewer_params = dict(params)
+            interviewer_params["max_tokens"] = max(params.get("max_tokens", 256), 1024)
+            # Disable thinking mode on Gemma 4 and similar reasoning models.
+            # Thinking tokens consume the entire max_tokens budget before the
+            # actual response is generated, producing empty output at 256 tokens.
+            interviewer_params["thinking_budget"] = 0
+            next_probe = self.interviewer_model.generate(interviewer_prompt, interviewer_params)
+            next_probe = next_probe.strip()
             next_probe = next_probe.strip()
             for prefix in ("INTERVIEWER:", "Interviewer:"):
                 if next_probe.startswith(prefix):
