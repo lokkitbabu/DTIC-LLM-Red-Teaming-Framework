@@ -41,6 +41,8 @@ from dashboard.views.comparison import render_comparison_view
 from dashboard.views.run_executor import render_run_executor
 from dashboard.views.prune import render_prune_view
 from dashboard.views.score_runs import render_score_runs_view
+from dashboard.views.statistics import render_statistics_view
+from dashboard.views.rejudge import render_rejudge_view
 from dashboard.views.agreement import render_agreement_view
 from dashboard.views.scenarios import render_scenarios_view
 from dashboard.views.results import render_results_view
@@ -100,7 +102,7 @@ st.sidebar.title("Analytics Dashboard")
 
 page = st.sidebar.radio(
     "Navigate",
-    options=["Results", "Coordination", "Summary", "Run Detail", "Charts", "Compare", "Run Scenario", "Score Runs", "Agreement", "Scenarios", "Prune Runs"],
+    options=["Results", "Statistics", "Coordination", "Summary", "Run Detail", "Charts", "Compare", "Run Scenario", "Score Runs", "Re-Judge", "Agreement", "Scenarios", "Prune Runs"],
 )
 
 if st.sidebar.button("🔄 Refresh"):
@@ -289,6 +291,9 @@ if page == "Results":
     planned = st.sidebar.number_input("Planned runs", min_value=1, value=30, step=1, key="planned_runs")
     render_results_view(filtered_index, scoring_dir=SCORING_DIR, planned_runs=int(planned))
 
+elif page == "Statistics":
+    render_statistics_view(filtered_index, scoring_dir=SCORING_DIR)
+
 elif page == "Coordination":
     render_coordination_view(filtered_index, scoring_dir=SCORING_DIR)
 
@@ -351,6 +356,9 @@ elif page == "Run Scenario":
 
 elif page == "Score Runs":
     render_score_runs_view(filtered_index, logs_dir=LOGS_DIR, scoring_dir=SCORING_DIR)
+
+elif page == "Re-Judge":
+    render_rejudge_view(filtered_index, logs_dir=LOGS_DIR)
 
 elif page == "Agreement":
     render_agreement_view(SCORING_DIR)

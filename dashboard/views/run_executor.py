@@ -31,7 +31,7 @@ MODEL_PRESETS = {
     "Mistral Large 3":   "mistral:mistral-large-latest",
     "Claude Sonnet 4.6": "anthropic:claude-sonnet-4-6",
     "GPT-5.4":           "openai:gpt-5.4",
-    "Grok 4.20":          "grok:grok-4-20",
+    "Grok 4.20":         "grok:grok-4.20-0309-non-reasoning",
 }
 
 INTERVIEWER_PRESETS = {

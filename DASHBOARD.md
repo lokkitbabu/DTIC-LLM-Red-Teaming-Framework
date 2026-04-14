@@ -81,7 +81,7 @@ python batch_run.py \
     together:deepseek-ai/DeepSeek-V3 \
     mistral:mistral-large-latest \    anthropic:claude-sonnet-4-6 \
     openai:gpt-5.4 \
-    grok:grok-4-20 \
+    grok:grok-4.20-0309-non-reasoning \
   --interviewer openai:gpt-4.1-2025-04-14 \
   --judge openai:gpt-5.4 \
   --prompt-formats flat hierarchical xml \
