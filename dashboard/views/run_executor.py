@@ -324,15 +324,18 @@ def render_run_executor() -> None:
         st.rerun()
 
     # ── Live status display ─────────────────────────────────────────────────
+    # Use st.fragment with run_every so this section auto-polls every second
+    # without requiring user interaction — the only reliable way on Streamlit Cloud
+    _render_live_status()
+
+
+@st.fragment(run_every=1)
+def _render_live_status() -> None:
+    """Auto-refreshing fragment — reruns every 1s while a run is active."""
     run_state = st.session_state.get("run_state")
     if run_state is None:
         return
-
     _render_status(run_state)
-
-    # Store a flag so app.py top-level can trigger the rerun
-    if run_state.get("running"):
-        st.session_state["_needs_rerun"] = True
 
 
 # ---------------------------------------------------------------------------
