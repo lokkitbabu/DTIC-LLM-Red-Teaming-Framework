@@ -31,11 +31,11 @@ MODEL_PRESETS = {
     "Mistral Large 3":   "mistral:mistral-large-latest",
     "Claude Sonnet 4.6": "anthropic:claude-sonnet-4-6",
     "GPT-5.4":           "openai:gpt-5.4",
-    "Grok 4":            "grok:grok-4-0709",
+    "Grok 4.1 Fast":     "grok:grok-4-1-fast-reasoning",
 }
 
 INTERVIEWER_PRESETS = {
-    "Gemma 4 31B (recommended)": "together:google/gemma-4-31B-it",
+    "GPT-4.1 (recommended)": "openai:gpt-4.1-2025-04-14",
     "Llama 3.3 70B Turbo":        "together:meta-llama/Llama-3.3-70B-Instruct-Turbo",
 }
 
@@ -266,7 +266,7 @@ def render_run_executor() -> None:
         interviewer_model = st.text_input(
             "Interviewer",
             value=st.session_state.get("re_interviewer_model",
-                                       "together:google/gemma-4-31B-it"),
+                                       "openai:gpt-4.1-2025-04-14"),
             key="re_interviewer_model",
             label_visibility="collapsed",
         )
