@@ -57,7 +57,7 @@ def render_run_detail(
         _render_pdf_download(run_data, manual_scores)
 
     with tab_rate:
-        render_run_scoring_ui(run_data, scoring_dir)
+        render_run_scoring_ui(run_data, scoring_dir, key_suffix="_rate_tab")
 
     with tab_drift:
         render_drift_analysis(run_data, logs_dir)
@@ -69,7 +69,7 @@ def render_run_detail(
             render_conversation_log(run_data, key_suffix="_score_tab")
         with col_form:
             st.markdown("#### Per-Turn Scores")
-            render_manual_scoring_ui(run_data, manual_scores, scoring_dir)
+            render_manual_scoring_ui(run_data, manual_scores, scoring_dir, key_suffix="_score_tab")
 
 
 def _render_pdf_download(run_data: dict, manual_scores: pd.DataFrame) -> None:

@@ -48,7 +48,7 @@ _PRESET_TAGS = [
 # Public: per-run scoring
 # ---------------------------------------------------------------------------
 
-def render_run_scoring_ui(run_data: dict, scoring_dir: Path) -> None:
+def render_run_scoring_ui(run_data: dict, scoring_dir: Path, key_suffix: str = "") -> None:
     """
     Enhanced per-run scoring form.
     One score per rater per run — no per-turn scoring here.
@@ -64,7 +64,7 @@ def render_run_scoring_ui(run_data: dict, scoring_dir: Path) -> None:
         rater_id = st.selectbox(
             "Your rater ID",
             options=[""] + _RATER_IDS,
-            key=rater_key,
+            key=rater_key + key_suffix,
             format_func=lambda x: "— select —" if x == "" else x,
         )
 
@@ -82,10 +82,10 @@ def render_run_scoring_ui(run_data: dict, scoring_dir: Path) -> None:
     tab_score, tab_tags = st.tabs(["📊 Score", "🏷️ Tags"])
 
     with tab_score:
-        _render_score_form(run_id, run_data, rater_id, existing, writer, scoring_dir)
+        _render_score_form(run_id, run_data, rater_id, existing, writer, scoring_dir, key_suffix)
 
     with tab_tags:
-        _render_tag_manager(run_id, rater_id)
+        _render_tag_manager(run_id, rater_id, key_suffix)
 
 
 # ---------------------------------------------------------------------------
@@ -99,6 +99,7 @@ def _render_score_form(
     existing: dict | None,
     writer: ScoreWriter,
     scoring_dir: Path,
+    key_suffix: str = "",
 ) -> None:
     # Conversation preview
     with st.expander("📋 Conversation preview (last 8 turns)", expanded=False):
@@ -140,7 +141,7 @@ def _render_score_form(
                 _METRIC_LABELS[metric],
                 options=[1, 2, 3, 4, 5],
                 value=default_val,
-                key=f"run_score_{run_id}_{metric}",
+                key=f"run_score_{run_id}_{metric}{key_suffix}",
                 label_visibility="collapsed",
                 format_func=lambda v: f"{v} — {['', 'Poor', 'Weak', 'Moderate', 'Strong', 'Excellent'][v]}",
             )
@@ -161,7 +162,7 @@ def _render_score_form(
     notes = st.text_area(
         "Notes (optional)",
         value=default_notes,
-        key=f"run_score_notes_{run_id}",
+        key=f"run_score_notes_{run_id}{key_suffix}",
         placeholder="Key observations, interesting turns, anomalies…",
         height=90,
     )
@@ -170,7 +171,7 @@ def _render_score_form(
 
     col_save, col_clear = st.columns([2, 1])
     with col_save:
-        if st.button("💾 Save score", type="primary", key=f"save_run_score_{run_id}", disabled=not rater_id):
+        if st.button("💾 Save score", type="primary", key=f"save_run_score_{run_id}{key_suffix}", disabled=not rater_id):
             if not rater_id:
                 st.error("Select a rater ID first.")
                 return
@@ -210,7 +211,7 @@ def _render_score_form(
 # Tag manager
 # ---------------------------------------------------------------------------
 
-def _render_tag_manager(run_id: str, rater_id: str) -> None:
+def _render_tag_manager(run_id: str, rater_id: str, key_suffix: str = "") -> None:
     """Inline tag manager — add/remove tags, syncs to Supabase."""
     try:
         from dashboard.supabase_store import get_store
@@ -232,7 +233,7 @@ def _render_tag_manager(run_id: str, rater_id: str) -> None:
         tag_cols = st.columns(min(len(current_tags), 5))
         for i, tag in enumerate(current_tags):
             with tag_cols[i % 5]:
-                if st.button(f"✕  {tag}", key=f"rm_tag_{run_id}_{tag}"):
+                if st.button(f"✕  {tag}", key=f"rm_tag_{run_id}_{tag}{key_suffix}"):
                     if supa_ok:
                         store.remove_tag(run_id, tag)
                     else:
@@ -251,7 +252,7 @@ def _render_tag_manager(run_id: str, rater_id: str) -> None:
         already = tag in current_tags
         with preset_cols[i % 5]:
             btn_label = f"✓ {tag}" if already else f"+ {tag}"
-            if st.button(btn_label, key=f"preset_{run_id}_{tag}", disabled=already):
+            if st.button(btn_label, key=f"preset_{run_id}_{tag}{key_suffix}", disabled=already):
                 if supa_ok:
                     store.add_tag(run_id, tag, created_by=rater_id or "")
                 else:
@@ -267,13 +268,13 @@ def _render_tag_manager(run_id: str, rater_id: str) -> None:
     with col_input:
         custom = st.text_input(
             "Custom tag",
-            key=f"custom_tag_{run_id}",
+            key=f"custom_tag_{run_id}{key_suffix}",
             placeholder="e.g. session-2, escalation-stall, high-yield",
             label_visibility="collapsed",
         )
     with col_add:
         st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("Add", key=f"add_custom_{run_id}") and custom.strip():
+        if st.button("Add", key=f"add_custom_{run_id}{key_suffix}") and custom.strip():
             tag = custom.strip().lower().replace(" ", "-")
             if supa_ok:
                 store.add_tag(run_id, tag, created_by=rater_id or "")
@@ -297,9 +298,10 @@ def render_manual_scoring_ui(
     run_data: dict,
     manual_scores: pd.DataFrame,
     scoring_dir: Path,
+    key_suffix: str = "",
 ) -> None:
     """Thin wrapper — redirects to per-run scoring UI."""
-    render_run_scoring_ui(run_data, scoring_dir)
+    render_run_scoring_ui(run_data, scoring_dir, key_suffix=key_suffix)
 
 
 # ---------------------------------------------------------------------------
