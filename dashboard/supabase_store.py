@@ -289,6 +289,28 @@ class SupabaseStore:
             logger.error("load_all_session_memories failed: %s", e)
             return []
 
+    def delete_run(self, run_id: str) -> bool:
+        """Delete a run and all associated scores/memories from Supabase."""
+        if not self.available:
+            return False
+        try:
+            for table in ("turn_scores", "run_scores", "run_logs"):
+                self._client.table(table).delete().eq("run_id", run_id).execute()
+            return True
+        except Exception as e:
+            logger.error("delete_run %s failed: %s", run_id, e)
+            return False
+
+    def delete_runs(self, run_ids: list[str]) -> tuple[int, int]:
+        """Bulk delete runs. Returns (deleted_count, failed_count)."""
+        ok, fail = 0, 0
+        for run_id in run_ids:
+            if self.delete_run(run_id):
+                ok += 1
+            else:
+                fail += 1
+        return ok, fail
+
 
 # Module-level singleton — imported once, reused everywhere
 _store: Optional[SupabaseStore] = None

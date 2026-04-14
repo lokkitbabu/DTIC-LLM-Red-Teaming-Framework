@@ -39,6 +39,7 @@ from dashboard.views.detail import render_run_detail
 from dashboard.views.charts import render_aggregate_charts
 from dashboard.views.comparison import render_comparison_view
 from dashboard.views.run_executor import render_run_executor
+from dashboard.views.prune import render_prune_view
 from dashboard.views.agreement import render_agreement_view
 from dashboard.views.scenarios import render_scenarios_view
 from dashboard.views.results import render_results_view
@@ -98,7 +99,7 @@ st.sidebar.title("Analytics Dashboard")
 
 page = st.sidebar.radio(
     "Navigate",
-    options=["Results", "Coordination", "Summary", "Run Detail", "Charts", "Compare", "Run Scenario", "Agreement", "Scenarios"],
+    options=["Results", "Coordination", "Summary", "Run Detail", "Charts", "Compare", "Run Scenario", "Agreement", "Scenarios", "Prune Runs"],
 )
 
 if st.sidebar.button("🔄 Refresh"):
@@ -325,6 +326,9 @@ elif page == "Agreement":
 
 elif page == "Scenarios":
     render_scenarios_view(SCENARIOS_DIR)
+
+elif page == "Prune Runs":
+    render_prune_view(filtered_index, LOGS_DIR)
 
 # ---------------------------------------------------------------------------
 # Top-level polling loop for live run progress
