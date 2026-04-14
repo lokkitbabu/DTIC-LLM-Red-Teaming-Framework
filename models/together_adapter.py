@@ -29,7 +29,30 @@ class TogetherAdapter(ModelAdapter):
             top_p=params.get("top_p", 0.9),
             max_tokens=max(16, params.get("max_tokens", 512)),
         )
-        return response.choices[0].message.content or ""
+        content = response.choices[0].message.content or ""
+
+        # Gemma 4 (and other reasoning models) may wrap output in <think>...</think>
+        # blocks. Strip the thinking section and return only the final response.
+        content = self._strip_thinking(content)
+
+        # Some models return empty .content but put text in reasoning_content.
+        # Fall back to that if the main content is empty.
+        if not content.strip():
+            extra = getattr(response.choices[0].message, "reasoning_content", None)
+            if extra:
+                content = extra.strip()
+
+        return content
+
+    @staticmethod
+    def _strip_thinking(text: str) -> str:
+        """Remove <think>...</think> or <|think|>...</|think|> blocks."""
+        import re
+        # Remove standard <think> blocks
+        text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
+        # Remove pipe-style thinking tokens used by some Gemma variants
+        text = re.sub(r"<\|think\|>.*?<\|/think\|>", "", text, flags=re.DOTALL)
+        return text.strip()
 
     def _parse_prompt(self, prompt: str) -> list[dict]:
         """
