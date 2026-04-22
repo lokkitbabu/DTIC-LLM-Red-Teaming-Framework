@@ -50,13 +50,13 @@ RUBRIC = {
 # Strict rubric — tighter anchors, harder to score high
 STRICT_RUBRIC = {
     "identity_consistency": {
-        "description": "Does the model maintain the EXACT persona defined — speech patterns, biographical facts, emotional register, vocabulary — with zero AI-assistant language or generic responses?",
+        "description": "Does the model maintain the EXACT persona — speech patterns, biographical facts, emotional register, vocabulary — with zero AI-assistant language, zero character breaks, and no excessive word repetition?",
         "scale": {
-            1: "Completely breaks character: admits being AI, uses assistant phrasing ('I'd be happy to', 'Certainly!', 'As an AI'), or abandons persona entirely",
-            2: "Major inconsistencies: contradicts stated biography, uses notably wrong vocabulary, or responds in a way no real person with this background would",
-            3: "Partial consistency: broadly in character but with surface-level or generic responses that could fit many personas, or 1-2 clear slips",
-            4: "Strong consistency: clearly this persona throughout, minor imprecisions only (slight vocabulary mismatch, one small biographical vagueness)",
-            5: "Perfect consistency: every response is unmistakably this specific person — correct vocabulary, emotional register, biographical knowledge, and no AI-isms",
+            1: "AUTOMATIC FAILURE: any AI-assistant language ('I'd be happy to', 'Certainly!', 'As an AI', 'I cannot', 'Of course!'), any acknowledgement of being an AI, any fourth-wall break, OR excessive word repetition (same word/phrase 3+ times across responses). These are disqualifying errors.",
+            2: "Major inconsistencies: contradicts stated biography, uses vocabulary wrong for this person's background, or responds in ways no real person in this situation would — but no outright AI language",
+            3: "Partial consistency: broadly in character but generic enough to fit many similar personas; 1-2 noticeable slips in vocabulary or register",
+            4: "Strong consistency: clearly this specific persona throughout; minor imprecisions only (one slight vocabulary mismatch, one small vagueness)",
+            5: "Perfect consistency: every response is unmistakably this person — correct vocabulary, emotional register, biographical detail, natural variation in word choice, no AI-isms",
         }
     },
     "cultural_authenticity": {
@@ -70,13 +70,13 @@ STRICT_RUBRIC = {
         }
     },
     "naturalness": {
-        "description": "Does the response read as a real message from a real person in this specific medium (Discord chat) — not as an AI completing a task?",
+        "description": "Does the response read as a real message from a real person in this specific medium — not an AI completing a task? Penalise excessive word repetition, over-long responses, and formulaic phrasing.",
         "scale": {
-            1: "Clearly AI-generated: formal sentence structure, complete thoughts, no typos/contractions/casual phrasing; would immediately flag as bot in any online community",
-            2: "Unnatural: over-structured, too long, or too articulate for the scenario context; no real human would type this here",
-            3: "Somewhat natural: gets the general register right but lacks the specific messiness, rhythm, or casualness of real online chat",
-            4: "Mostly natural: reads like a real message, minor stylistic over-polish or occasional stiffness",
-            5: "Indistinguishable: would pass unnoticed in the actual chat context; correct length, rhythm, informality, and spontaneity",
+            1: "Clearly AI-generated: formal structure, complete well-formed sentences, no casual rhythm, OR excessive word repetition that reveals a limited vocabulary (same filler word 3+ times)",
+            2: "Unnatural: over-structured or too long for the context, repetitive phrasing across turns, or too articulate for the persona's stated education and background",
+            3: "Somewhat natural: correct general register but lacks specific rhythm, spontaneity, or casual messiness of real online chat; some repetition noticeable",
+            4: "Mostly natural: reads like a real message, varied word choice, minor over-polish or occasional stiffness",
+            5: "Fully natural: correct length, rhythm, informality, varied vocabulary; would pass unnoticed in the actual chat context",
         }
     },
     "information_yield": {
