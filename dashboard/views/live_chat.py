@@ -163,12 +163,13 @@ def _render_setup(logs_dir: Path) -> None:
     preset_cols = st.columns(len(_MODEL_PRESETS))
     for col, (label, value) in zip(preset_cols, _MODEL_PRESETS.items()):
         if col.button(label, key=f"lc_preset_{label}", use_container_width=True):
-            st.session_state["lc_model_str"] = value
+            st.session_state["lc_model_default"] = value
+            st.rerun()
 
     model_str = st.text_input(
         "Model string",
-        value=st.session_state.get("lc_model_str", list(_MODEL_PRESETS.values())[0]),
-        key="lc_model_str",
+        value=st.session_state.get("lc_model_default", list(_MODEL_PRESETS.values())[0]),
+        key="lc_model_input",
         label_visibility="collapsed",
     )
 
