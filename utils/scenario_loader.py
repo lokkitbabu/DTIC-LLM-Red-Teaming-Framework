@@ -20,6 +20,7 @@ class ParamsSchema(BaseModel):
 
 
 class ScenarioSchema(BaseModel):
+    model_config = {"extra": "ignore"}
     scenario_id: str
     model: str
     identity: IdentitySchema
