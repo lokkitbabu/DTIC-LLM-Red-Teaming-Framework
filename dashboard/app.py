@@ -44,6 +44,7 @@ from dashboard.views.score_runs import render_score_runs_view
 from dashboard.views.statistics import render_statistics_view
 from dashboard.views.rejudge import render_rejudge_view
 from dashboard.views.live_chat import render_live_chat_view
+from dashboard.views.batch_run import render_batch_run_view
 from dashboard.views.agreement import render_agreement_view
 from dashboard.views.scenarios import render_scenarios_view
 from dashboard.views.results import render_results_view
@@ -103,7 +104,7 @@ st.sidebar.title("Analytics Dashboard")
 
 page = st.sidebar.radio(
     "Navigate",
-    options=["Results", "Statistics", "Live Chat", "Coordination", "Summary", "Run Detail", "Charts", "Compare", "Run Scenario", "Score Runs", "Re-Judge", "Agreement", "Scenarios", "Prune Runs"],
+    options=["Results", "Statistics", "Live Chat", "Run Experiments", "Coordination", "Summary", "Run Detail", "Charts", "Compare", "Run Scenario", "Score Runs", "Re-Judge", "Agreement", "Scenarios", "Prune Runs"],
 )
 
 if st.sidebar.button("🔄 Refresh"):
@@ -360,6 +361,9 @@ elif page == "Score Runs":
 
 elif page == "Live Chat":
     render_live_chat_view(logs_dir=LOGS_DIR)
+
+elif page == "Run Experiments":
+    render_batch_run_view(logs_dir=LOGS_DIR)
 
 elif page == "Re-Judge":
     render_rejudge_view(filtered_index, logs_dir=LOGS_DIR)
