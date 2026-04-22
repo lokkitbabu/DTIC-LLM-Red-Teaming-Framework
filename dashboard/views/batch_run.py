@@ -130,6 +130,12 @@ def render_batch_run_view(logs_dir: Path = Path("logs")) -> None:
             help="strict = AI-language = 1, word repetition penalised",
         )
         dual_judge = st.checkbox("Dual judge (avg GPT-5.4 + Claude)", value=True, key="br_dual_judge")
+        max_workers = st.slider(
+            "Parallel runs",
+            min_value=1, max_value=6, value=3, step=1,
+            key="br_max_workers",
+            help="How many runs execute simultaneously. Higher = faster but more API rate-limit risk. 3 is a safe default.",
+        )
 
     # ── Plan summary ──────────────────────────────────────────────────────────
     n_scenarios = len(selected_scenarios)
@@ -143,7 +149,8 @@ def render_batch_run_view(logs_dir: Path = Path("logs")) -> None:
             f"**{n_runs} total runs** — "
             f"{n_scenarios} scenario(s) × {n_models} model(s) × {int(runs_per_combo)} repeat(s)  \n"
             f"Format: `{prompt_format}` · Turns: {int(max_turns)} · "
-            f"Eval: `{eval_prompt}` · Judge: {judge_label}"
+            f"Eval: `{eval_prompt}` · Judge: {judge_label}  \n"
+            f"⚡ **{max_workers} parallel** (est. {max(1, n_runs // max_workers)} batch(es) of {max_workers})"
         )
     else:
         st.warning("Select at least one scenario and one model.")
@@ -170,6 +177,7 @@ def render_batch_run_view(logs_dir: Path = Path("logs")) -> None:
             eval_prompt=eval_prompt,
             dual_judge=dual_judge,
             logs_dir=logs_dir,
+            max_workers=int(max_workers),
         )
         st.rerun()
 
@@ -191,7 +199,10 @@ def _render_progress() -> None:
     errors = br_state.get("errors", [])
 
     if is_running:
-        st.progress(completed / total, text=f"▶ {completed}/{total} — {current}")
+        active_list = br_state.get("active", [])
+        active_str = ", ".join(active_list[:3]) + ("…" if len(active_list) > 3 else "")
+        st.progress(completed / total,
+                    text=f"▶ {completed}/{total} complete  |  running: {active_str or 'starting…'}")
     elif errors:
         st.error(f"Completed with {len(errors)} error(s): see log below")
     else:
@@ -221,6 +232,7 @@ def _start_batch(
     eval_prompt: str,
     dual_judge: bool,
     logs_dir: Path,
+    max_workers: int = 3,
 ) -> None:
     # Build full combo list: scenario × model × repeat
     combos = [
@@ -233,22 +245,22 @@ def _start_batch(
         "running": True,
         "completed": 0,
         "total": len(combos),
-        "current": "",
+        "active": [],       # list of currently-running run labels
         "lines": [],
         "errors": [],
     }
     st.session_state["br_state"] = state
 
     t = threading.Thread(
-        target=_worker,
+        target=_parallel_worker,
         args=(combos, interviewer, prompt_format, max_turns,
-              eval_prompt, dual_judge, logs_dir, state),
+              eval_prompt, dual_judge, logs_dir, state, max_workers),
         daemon=True,
     )
     t.start()
 
 
-def _worker(
+def _parallel_worker(
     combos: list,
     interviewer_str: str,
     prompt_format: str,
@@ -257,7 +269,100 @@ def _worker(
     dual_judge: bool,
     logs_dir: Path,
     state: dict,
+    max_workers: int = 3,
 ) -> None:
+    """
+    Outer coordinator: spins up a ThreadPoolExecutor and submits one
+    _run_one_combo() call per combo. Progress is tracked via shared state.
+    """
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
+    from main import build_model
+    from evaluation.llm_judge import LLMJudge
+    import concurrent.futures
+    import threading
+
+    # Pre-build shared resources once
+    try:
+        interviewer_model = build_model(interviewer_str)
+        judge_a = build_model(_JUDGE_A)
+        judge_b = build_model(_JUDGE_B) if dual_judge else None
+    except Exception as e:
+        state["errors"].append(f"Failed to init shared models: {e}")
+        state["running"] = False
+        return
+
+    lock = threading.Lock()
+
+    def _run_one(combo):
+        scenario_path, model_str, rep = combo
+        scenario_stem = scenario_path.stem
+        model_short = model_str.split(":")[-1].split("/")[-1][:20]
+        label = f"{scenario_stem} × {model_short} rep{rep}"
+
+        with lock:
+            state["active"].append(label)
+
+        try:
+            _run_one_combo(
+                scenario_path=scenario_path,
+                model_str=model_str,
+                rep=rep,
+                interviewer_model=interviewer_model,
+                judge_a=judge_a,
+                judge_b=judge_b,
+                prompt_format=prompt_format,
+                max_turns=max_turns,
+                eval_prompt=eval_prompt,
+                dual_judge=dual_judge,
+                logs_dir=logs_dir,
+                state=state,
+                lock=lock,
+                label=label,
+            )
+        finally:
+            with lock:
+                state["completed"] += 1
+                if label in state["active"]:
+                    state["active"].remove(label)
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as pool:
+        futures = [pool.submit(_run_one, combo) for combo in combos]
+        concurrent.futures.wait(futures)
+
+    state["running"] = False
+    state["active"] = []
+    with lock:
+        state["lines"].append(
+            f"\n✅ Done — {state['completed']}/{state['total']} runs, "
+            f"{len(state['errors'])} error(s)"
+        )
+
+    try:
+        import streamlit as _st
+        _st.cache_data.clear()
+    except Exception:
+        pass
+
+
+def _run_one_combo(
+    scenario_path: Path,
+    model_str: str,
+    rep: int,
+    interviewer_model,
+    judge_a,
+    judge_b,
+    prompt_format: str,
+    max_turns: int,
+    eval_prompt: str,
+    dual_judge: bool,
+    logs_dir: Path,
+    state: dict,
+    lock,
+    label: str,
+) -> None:
+    """Run a single scenario × model combo, score it, and save."""
     import sys
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
@@ -267,106 +372,75 @@ def _worker(
     from utils.logger import save_run
     from utils.scenario_loader import load_scenario
 
-    # Pre-build interviewer (shared across all runs)
+    def _log(msg: str):
+        with lock:
+            state["lines"].append(f"[{label}] {msg}")
+
     try:
-        interviewer_model = build_model(interviewer_str)
-    except Exception as e:
-        state["errors"].append(f"Failed to build interviewer {interviewer_str}: {e}")
-        state["running"] = False
-        return
+        scenario = load_scenario(str(scenario_path))
+        subject_model = build_model(model_str)
 
-    # Build judges once
-    try:
-        judge_a = build_model(_JUDGE_A)
-        judge_b = build_model(_JUDGE_B) if dual_judge else None
-        judge_models = [judge_a, judge_b] if dual_judge else [judge_a]
-    except Exception as e:
-        state["errors"].append(f"Failed to build judge: {e}")
-        state["running"] = False
-        return
+        runner = ConversationRunner(
+            subject_model=subject_model,
+            interviewer_model=interviewer_model,
+            max_turns=max_turns,
+            prompt_format=prompt_format,
+        )
 
-    for scenario_path, model_str, rep in combos:
-        scenario_stem = scenario_path.stem
-        model_short = model_str.split(":")[-1].split("/")[-1][:20]
-        label = f"{scenario_stem} × {model_short} (rep {rep})"
-        state["current"] = label
-        state["lines"].append(f"\n── {label} ──")
+        _log("▶ starting conversation…")
 
+        # Suppress per-turn print noise during parallel runs — too interleaved
+        import builtins, io
+        captured = io.StringIO()
+        _orig = builtins.print
+        def _silent(*args, **kwargs):
+            msg = " ".join(str(a) for a in args)
+            captured.write(msg + "\n")
+            # Only surface turn progress
+            if "turn" in msg and ("subject done" in msg or "interviewer done" in msg):
+                _log(msg.strip())
+        builtins.print = _silent
         try:
-            scenario = load_scenario(str(scenario_path))
-            subject_model = build_model(model_str)
+            run_data = runner.run(scenario)
+        finally:
+            builtins.print = _orig
 
-            runner = ConversationRunner(
-                subject_model=subject_model,
-                interviewer_model=interviewer_model,
-                max_turns=max_turns,
-                prompt_format=prompt_format,
-            )
+        turns = run_data["metadata"]["total_turns"]
+        _log(f"✓ {turns} turns")
 
-            # Capture print output
-            import builtins
-            _orig = builtins.print
-            def _cap(*args, **kwargs):
-                msg = " ".join(str(a) for a in args)
-                if msg.strip():
-                    state["lines"].append(f"  {msg}")
-                _orig(*args, **kwargs)
-            builtins.print = _cap
-            try:
-                run_data = runner.run(scenario)
-            finally:
-                builtins.print = _orig
+        # Judge
+        judge_models = [judge_a, judge_b] if dual_judge and judge_b else [judge_a]
+        judge = LLMJudge(judge_models, eval_target="subject", prompt_name=eval_prompt)
+        _log("⚖ judging…")
+        result = judge.evaluate(run_data)
+        run_data["scores"]["llm_judge"] = result
 
-            turns = run_data["metadata"]["total_turns"]
-            state["lines"].append(f"  ✓ {turns} turns completed")
+        scores = result.get("scores", {})
+        total_score = sum(
+            float(scores.get(m) or 0)
+            for m in ["identity_consistency","cultural_authenticity","naturalness","information_yield"]
+            if scores.get(m) is not None
+        )
+        _log(
+            f"📊 IC={scores.get('identity_consistency','?')} "
+            f"CA={scores.get('cultural_authenticity','?')} "
+            f"N={scores.get('naturalness','?')} "
+            f"IY={scores.get('information_yield','?')} "
+            f"→ {total_score:.1f}/20"
+        )
 
-            # Judge
-            state["lines"].append(f"  ⚖ Judging ({eval_prompt})…")
-            judge = LLMJudge(judge_models, eval_target="subject", prompt_name=eval_prompt)
-            result = judge.evaluate(run_data)
-            run_data["scores"]["llm_judge"] = result
+        # Save
+        save_run(run_data)
+        try:
+            from dashboard.supabase_store import get_store
+            store = get_store()
+            if store.available:
+                store.save_run(run_data)
+                _log("☁ synced")
+        except Exception:
+            pass
 
-            scores = result.get("scores", {})
-            total = sum(
-                float(scores.get(m) or 0)
-                for m in ["identity_consistency","cultural_authenticity","naturalness","information_yield"]
-                if scores.get(m) is not None
-            )
-            state["lines"].append(
-                f"  📊 IC={scores.get('identity_consistency','?')} "
-                f"CA={scores.get('cultural_authenticity','?')} "
-                f"N={scores.get('naturalness','?')} "
-                f"IY={scores.get('information_yield','?')} "
-                f"→ total={total:.1f}/20"
-            )
-
-            # Save + sync
-            save_run(run_data)
-            try:
-                from dashboard.supabase_store import get_store
-                store = get_store()
-                if store.available:
-                    store.save_run(run_data)
-                    state["lines"].append("  ☁ Synced to Supabase")
-            except Exception:
-                pass
-
-        except Exception as e:
-            msg = f"  ✗ FAILED: {str(e)[:120]}"
-            state["lines"].append(msg)
-            state["errors"].append(f"{label}: {str(e)[:120]}")
-
-        state["completed"] += 1
-
-    state["running"] = False
-    state["current"] = ""
-    state["lines"].append(
-        f"\n✅ Done — {state['completed']}/{state['total']} runs, "
-        f"{len(state['errors'])} error(s)"
-    )
-
-    try:
-        import streamlit as _st
-        _st.cache_data.clear()
-    except Exception:
-        pass
+    except Exception as e:
+        _log(f"✗ FAILED: {str(e)[:100]}")
+        with lock:
+            state["errors"].append(f"{label}: {str(e)[:100]}")
