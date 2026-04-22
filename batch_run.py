@@ -52,7 +52,7 @@ def run_experiment(scenario_path: str, model_str: str, interviewer_str: str, jud
 
             if judge_str:
                 judge_model = build_model(judge_str)
-                judge = LLMJudge(judge_model, eval_target=eval_target)
+                judge = LLMJudge(judge_model, eval_target=eval_target, prompt_name="strict")
                 result = judge.evaluate(run_data)
                 run_data["scores"]["llm_judge"] = result
 

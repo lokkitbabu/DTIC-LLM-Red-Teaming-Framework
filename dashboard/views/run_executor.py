@@ -170,7 +170,7 @@ def _worker(
             run_state["lines"].append(f"⚖ Judging with {judge_model_str.split(':')[-1]}…")
             judge_model = _build_model(judge_model_str)
             from evaluation.llm_judge import LLMJudge
-            judge = LLMJudge(judge_model, eval_target="subject")
+            judge = LLMJudge(judge_model, eval_target="subject", prompt_name="strict")
             result = judge.evaluate(run_data)
             run_data["scores"]["llm_judge"] = result
             scores = {k: v for k, v in (result.get("scores") or result).items()

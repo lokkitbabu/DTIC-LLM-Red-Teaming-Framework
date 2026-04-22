@@ -64,6 +64,20 @@ def render_rejudge_view(
         key="rj_eval_target",
     )
 
+    eval_prompt = st.radio(
+        "Eval prompt",
+        ["strict", "standard", "lenient"],
+        horizontal=True,
+        key="rj_eval_prompt",
+        help="strict = harder to score high, penalises AI-isms and generic responses (recommended). standard = balanced. lenient = upper bound.",
+    )
+
+    use_dual_judge = st.checkbox(
+        "Use dual judge (GPT-5.4 + Claude Sonnet 4.6, scores averaged)",
+        value=True,
+        key="rj_dual_judge",
+    )
+
     # ── Run selection ────────────────────────────────────────────────────────
     st.markdown("#### 2 — Select runs")
 
@@ -128,7 +142,11 @@ def render_rejudge_view(
         key="rj_launch",
         disabled=is_running,
     ):
-        _start_rejudge(selected_ids, judge_model, eval_target, logs_dir)
+        _start_rejudge(
+            selected_ids, judge_model, eval_target, logs_dir,
+            eval_prompt=st.session_state.get("rj_eval_prompt", "strict"),
+            dual_judge=st.session_state.get("rj_dual_judge", True),
+        )
         st.rerun()
 
     # ── Progress ─────────────────────────────────────────────────────────────
@@ -164,7 +182,7 @@ def _render_rejudge_status() -> None:
             st.code("\n".join(lines[-30:]), language=None)
 
 
-def _start_rejudge(run_ids: list[str], judge_model_str: str, eval_target: str, logs_dir: Path) -> None:
+def _start_rejudge(run_ids: list[str], judge_model_str: str, eval_target: str, logs_dir: Path, eval_prompt: str = 'strict', dual_judge: bool = True) -> None:
     state = {
         "running": True,
         "completed": 0,
@@ -176,7 +194,7 @@ def _start_rejudge(run_ids: list[str], judge_model_str: str, eval_target: str, l
 
     t = threading.Thread(
         target=_rejudge_worker,
-        args=(run_ids, judge_model_str, eval_target, logs_dir, state),
+        args=(run_ids, judge_model_str, eval_target, logs_dir, state, eval_prompt, dual_judge),
         daemon=True,
     )
     t.start()
@@ -188,6 +206,8 @@ def _rejudge_worker(
     eval_target: str,
     logs_dir: Path,
     state: dict,
+    eval_prompt: str = 'strict',
+    dual_judge: bool = True,
 ) -> None:
     import sys
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
@@ -196,8 +216,17 @@ def _rejudge_worker(
     from evaluation.llm_judge import LLMJudge
 
     try:
-        judge_model = build_model(judge_model_str)
-        judge = LLMJudge(judge_model, eval_target=eval_target)
+        # Build judge(s) — dual judge averages GPT-5.4 + Claude Sonnet
+        if dual_judge:
+            judge_models = [
+                build_model(judge_model_str),
+                build_model("anthropic:claude-sonnet-4-6") if "gpt" in judge_model_str else build_model("openai:gpt-5.4"),
+            ]
+            state["lines"].append(f"  Using dual judge: {judge_model_str.split(':')[-1]} + {'claude-sonnet-4-6' if 'gpt' in judge_model_str else 'gpt-5.4'}")
+        else:
+            judge_models = [build_model(judge_model_str)]
+        judge = LLMJudge(judge_models, eval_target=eval_target, prompt_name=eval_prompt)
+        state["lines"].append(f"  Eval prompt: {eval_prompt}")
     except Exception as e:
         state["error"] = f"Failed to init judge: {e}"
         state["running"] = False

@@ -45,9 +45,13 @@ def main():
     parser.add_argument("--scenario", required=True, help="Path to scenario JSON file")
     parser.add_argument("--model", required=True, help="Subject model, e.g. together:meta-llama/Llama-3.3-70B-Instruct-Turbo")
     parser.add_argument("--interviewer", required=True, help="Interviewer model, e.g. openai:gpt-4o")
-    parser.add_argument("--judge", default=None, help="Optional judge model for automated scoring")
+    parser.add_argument("--judge", default=None, help="Judge model (deprecated: use --judges)")
+    parser.add_argument("--judges", nargs="+", default=None,
+                        help="One or more judge models — scores are averaged. Default: gpt-5.4 + claude-sonnet-4-6")
     parser.add_argument("--eval-target", default="subject", choices=["subject", "interviewer"],
                         help="Which side to score (default: subject)")
+    parser.add_argument("--eval-prompt", default="strict", choices=["strict", "standard", "lenient"],
+                        help="Evaluation prompt strictness (default: strict)")
     parser.add_argument("--prompt-format", default="flat", choices=["flat", "hierarchical", "xml"],
                         help="Prompt structure for A/B testing (default: flat)")
     parser.add_argument("--session-group", default=None,
@@ -108,10 +112,15 @@ def main():
     csv_path = export_for_manual_scoring(run_data)
     print(f"Manual scoring sheet: {csv_path}")
 
-    if args.judge:
-        judge_model = build_model(args.judge)
-        judge = LLMJudge(judge_model, eval_target=args.eval_target)
-        print(f"Running LLM judge ({repr(judge_model)})...")
+    if args.judges or args.judge:
+        # Build judge model list — default to GPT-5.4 + Claude Sonnet if not specified
+        judge_strs = args.judges or ([args.judge] if args.judge else [
+            "openai:gpt-5.4", "anthropic:claude-sonnet-4-6"
+        ])
+        judge_models = [build_model(j) for j in judge_strs]
+        judge = LLMJudge(judge_models, eval_target=args.eval_target, prompt_name=args.eval_prompt)
+        label = " + ".join(j.split(":")[-1].split("/")[-1] for j in judge_strs)
+        print(f"Running LLM judge ({label}) with prompt '{args.eval_prompt}'...")
         result = judge.evaluate(run_data)
         run_data["scores"]["llm_judge"] = result
         save_run(run_data, run_data["run_id"])
