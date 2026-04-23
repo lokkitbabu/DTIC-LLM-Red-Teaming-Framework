@@ -88,14 +88,30 @@ def render_statistics_view(
         return
 
     # ── Load judge scores from run_index ────────────────────────────────────
-    score_source = st.radio(
-        "Score source",
-        ["LLM judge (from run logs)", "Human raters (from scoring CSVs)", "Both (averaged)"],
-        horizontal=True,
-        key="stats_source",
-    )
+    col_src, col_prompt = st.columns([3, 2])
+    with col_src:
+        score_source = st.radio(
+            "Score source",
+            ["LLM judge (from run logs)", "Human raters (from scoring CSVs)", "Both (averaged)"],
+            horizontal=True,
+            key="stats_source",
+        )
+    with col_prompt:
+        # Load available prompt names from Supabase judge_scores
+        available_prompts = _get_available_prompts()
+        if available_prompts:
+            selected_prompts = st.multiselect(
+                "Filter by eval prompt",
+                options=available_prompts,
+                default=available_prompts,
+                key="stats_prompt_filter",
+                help="Filter scores by which evaluation prompt was used (strict/standard/lenient)",
+            )
+        else:
+            selected_prompts = ["strict", "standard", "lenient"]
+            st.caption("Eval prompt filter — no judge_scores in Supabase yet")
 
-    df_scores = _build_score_df(run_index, scoring_dir, score_source)
+    df_scores = _build_score_df(run_index, scoring_dir, score_source, selected_prompts)
 
     if df_scores.empty:
         st.warning("No scores found for the selected source. Score some runs first.")
@@ -200,10 +216,68 @@ def render_statistics_view(
         _render_bar_chart(stats_df)
 
 
+def _get_available_prompts() -> list[str]:
+    """Fetch distinct prompt_name values from Supabase judge_scores."""
+    try:
+        from dashboard.supabase_store import get_store
+        store = get_store()
+        if not store.available:
+            return []
+        resp = store._client.table("judge_scores").select("prompt_name").execute()
+        return sorted({r["prompt_name"] for r in (resp.data or []) if r.get("prompt_name")})
+    except Exception:
+        return []
+
+
+def _load_judge_scores_from_supabase(
+    meta: pd.DataFrame,
+    prompt_filter: list[str] | None,
+) -> pd.DataFrame:
+    """
+    Load judge scores from Supabase judge_scores table, filtered by prompt_name.
+    Averages across judge models for same (run_id, prompt_name).
+    Returns DataFrame with run metadata + metric columns.
+    """
+    try:
+        from dashboard.supabase_store import get_store
+        store = get_store()
+        if not store.available:
+            return pd.DataFrame()
+
+        query = store._client.table("judge_scores").select(
+            "run_id, judge_model, prompt_name, "
+            "identity_consistency, cultural_authenticity, naturalness, information_yield"
+        )
+        if prompt_filter:
+            query = query.in_("prompt_name", prompt_filter)
+
+        resp = query.execute()
+        if not resp.data:
+            return pd.DataFrame()
+
+        scores_df = pd.DataFrame(resp.data)
+
+        # Average across judge models for same run_id + prompt_name combo
+        numeric = [m for m in _METRICS if m in scores_df.columns]
+        avg_scores = (
+            scores_df.groupby("run_id")[numeric]
+            .apply(lambda g: g.apply(pd.to_numeric, errors="coerce").mean())
+            .reset_index()
+        )
+
+        # Merge with run metadata
+        merged = meta.merge(avg_scores, on="run_id", how="inner")
+        return merged
+
+    except Exception:
+        return pd.DataFrame()
+
+
 def _build_score_df(
     run_index: pd.DataFrame,
     scoring_dir: Path,
     source: str,
+    prompt_filter: list[str] | None = None,
 ) -> pd.DataFrame:
     """Merge run metadata with scores from the requested source."""
     meta_cols = ["run_id", "model", "scenario_id", "prompt_format"]
@@ -213,21 +287,25 @@ def _build_score_df(
     frames = []
 
     if "LLM judge" in source or "Both" in source:
-        llm_rows = []
-        for _, row in run_index.iterrows():
-            for m in _METRICS:
-                col = f"llm_{m}"
-                if col in row and pd.notna(row[col]):
-                    break
-            else:
-                continue
-            r = {c: row[c] for c in available_meta if c in row}
-            for m in _METRICS:
-                col = f"llm_{m}"
-                r[m] = row.get(col)
-            llm_rows.append(r)
-        if llm_rows:
-            frames.append(pd.DataFrame(llm_rows))
+        # Try to load from Supabase judge_scores (has prompt_name filter support)
+        supa_scores = _load_judge_scores_from_supabase(meta, prompt_filter)
+        if not supa_scores.empty:
+            frames.append(supa_scores)
+        else:
+            # Fallback: read llm_* columns from run_index (no prompt filter possible)
+            llm_rows = []
+            for _, row in run_index.iterrows():
+                has_score = any(
+                    pd.notna(row.get(f"llm_{m}")) for m in _METRICS
+                )
+                if not has_score:
+                    continue
+                r = {c: row[c] for c in available_meta if c in row}
+                for m in _METRICS:
+                    r[m] = row.get(f"llm_{m}")
+                llm_rows.append(r)
+            if llm_rows:
+                frames.append(pd.DataFrame(llm_rows))
 
     if "Human" in source or "Both" in source:
         try:

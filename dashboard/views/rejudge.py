@@ -248,7 +248,7 @@ def _rejudge_worker(
             reasoning = result.get("reasoning", "") if isinstance(result, dict) else ""
 
             # Save to Supabase judge_scores table
-            _save_judge_score(run_id, judge_model_str, scores, reasoning)
+            _save_judge_score(run_id, judge_model_str, scores, reasoning, prompt_name=eval_prompt)
 
             # Also update run JSON locally
             _update_run_json(run_id, judge_model_str, result, logs_dir)
@@ -293,7 +293,7 @@ def _load_run_data(run_id: str, logs_dir: Path) -> Optional[dict]:
     return None
 
 
-def _save_judge_score(run_id: str, judge_model: str, scores: dict, reasoning: str) -> None:
+def _save_judge_score(run_id: str, judge_model: str, scores: dict, reasoning: str, prompt_name: str = "strict") -> None:
     try:
         from dashboard.supabase_store import get_store
         store = get_store()
@@ -302,6 +302,7 @@ def _save_judge_score(run_id: str, judge_model: str, scores: dict, reasoning: st
         row = {
             "run_id": run_id,
             "judge_model": judge_model,
+            "prompt_name": prompt_name,
             "identity_consistency": int(scores.get("identity_consistency") or 0) or None,
             "cultural_authenticity": int(scores.get("cultural_authenticity") or 0) or None,
             "naturalness": int(scores.get("naturalness") or 0) or None,
@@ -312,7 +313,7 @@ def _save_judge_score(run_id: str, judge_model: str, scores: dict, reasoning: st
             "reasoning": str(reasoning)[:2000],
         }
         store._client.table("judge_scores").upsert(
-            row, on_conflict="run_id,judge_model"
+            row, on_conflict="run_id,judge_model,prompt_name"
         ).execute()
     except Exception as e:
         print(f"  [save_judge_score] {e}", flush=True)
@@ -357,7 +358,7 @@ def _render_judge_scores_table(run_index: pd.DataFrame) -> None:
             return
 
         resp = store._client.table("judge_scores").select(
-            "run_id, judge_model, identity_consistency, cultural_authenticity, naturalness, information_yield, total, created_at"
+            "run_id, judge_model, prompt_name, identity_consistency, cultural_authenticity, naturalness, information_yield, total, created_at"
         ).order("created_at", desc=True).limit(200).execute()
 
         if not resp.data:
