@@ -159,12 +159,30 @@ def render_batch_run_view(logs_dir: Path = Path("logs")) -> None:
     br_state = st.session_state.get("br_state")
     is_running = br_state is not None and br_state.get("running", False)
 
-    launch = st.button(
-        f"🚀 Launch {n_runs} run(s)",
-        type="primary",
-        disabled=is_running or n_runs == 0,
-        key="br_launch",
-    )
+    # Stop button (only when running)
+    col_launch, col_stop = st.columns([3, 1])
+    with col_launch:
+        launch = st.button(
+            f"🚀 Launch {n_runs} run(s)",
+            type="primary",
+            disabled=is_running or n_runs == 0,
+            key="br_launch",
+        )
+    with col_stop:
+        stop_pressed = st.button(
+            "⏹ Stop",
+            disabled=not is_running,
+            key="br_stop",
+            type="secondary",
+        )
+
+    if stop_pressed and is_running:
+        br_state = st.session_state.get("br_state", {})
+        stop_evt = br_state.get("stop_event")
+        if stop_evt is not None:
+            stop_evt.set()
+            br_state["lines"].append("⏹ Stop requested — finishing current turns…")
+        st.rerun()
 
     if launch and n_runs > 0:
         _start_batch(
@@ -203,6 +221,8 @@ def _render_progress() -> None:
         active_str = ", ".join(active_list[:3]) + ("…" if len(active_list) > 3 else "")
         st.progress(completed / total,
                     text=f"▶ {completed}/{total} complete  |  running: {active_str or 'starting…'}")
+    elif br_state.get("stop_event") and br_state["stop_event"].is_set() and not is_running:
+        st.warning(f"⏹ Stopped after {completed}/{total} run(s). {len(errors)} error(s).")
     elif errors:
         st.error(f"Completed with {len(errors)} error(s): see log below")
     else:
@@ -241,20 +261,23 @@ def _start_batch(
         for m in models
         for r in range(1, runs_per_combo + 1)
     ]
+    import threading as _threading
+    stop_event = _threading.Event()
     state = {
         "running": True,
         "completed": 0,
         "total": len(combos),
-        "active": [],       # list of currently-running run labels
+        "active": [],
         "lines": [],
         "errors": [],
+        "stop_event": stop_event,
     }
     st.session_state["br_state"] = state
 
     t = threading.Thread(
         target=_parallel_worker,
         args=(combos, interviewer, prompt_format, max_turns,
-              eval_prompt, dual_judge, logs_dir, state, max_workers),
+              eval_prompt, dual_judge, logs_dir, state, max_workers, stop_event),
         daemon=True,
     )
     t.start()
@@ -270,6 +293,7 @@ def _parallel_worker(
     logs_dir: Path,
     state: dict,
     max_workers: int = 3,
+    stop_event=None,
 ) -> None:
     """
     Outer coordinator: spins up a ThreadPoolExecutor and submits one
@@ -301,6 +325,13 @@ def _parallel_worker(
         model_short = model_str.split(":")[-1].split("/")[-1][:20]
         label = f"{scenario_stem} × {model_short} rep{rep}"
 
+        # Skip if already stopped before we even start
+        if stop_event is not None and stop_event.is_set():
+            with lock:
+                state["lines"].append(f"[{label}] skipped (stop requested)")
+                state["completed"] += 1
+            return
+
         with lock:
             state["active"].append(label)
 
@@ -320,6 +351,7 @@ def _parallel_worker(
                 state=state,
                 lock=lock,
                 label=label,
+                stop_event=stop_event,
             )
         finally:
             with lock:
@@ -361,6 +393,7 @@ def _run_one_combo(
     state: dict,
     lock,
     label: str,
+    stop_event=None,
 ) -> None:
     """Run a single scenario × model combo, score it, and save."""
     import sys
@@ -401,7 +434,7 @@ def _run_one_combo(
                 _log(msg.strip())
         builtins.print = _silent
         try:
-            run_data = runner.run(scenario)
+            run_data = runner.run(scenario, stop_event=stop_event)
         finally:
             builtins.print = _orig
 

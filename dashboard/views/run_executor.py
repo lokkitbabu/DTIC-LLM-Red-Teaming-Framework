@@ -57,6 +57,7 @@ class RunState(TypedDict):
     lines: list[str]
     error: Optional[str]
     result_path: Optional[str]
+    stop_event: Optional[object]
     run_id: Optional[str]
     turn_current: int
     turn_total: int
@@ -157,7 +158,7 @@ def _worker(
 
         builtins.print = _capture
         try:
-            run_data = runner.run(scenario)
+            run_data = runner.run(scenario, stop_event=stop_event)
         finally:
             builtins.print = _orig
 
@@ -312,7 +313,17 @@ def render_run_executor() -> None:
         total_planned = 1
         btn_label = "▶ Run"
 
-    launch = st.button(btn_label, type="primary", disabled=is_running, key="re_launch")
+    col_l, col_s = st.columns([4, 1])
+    with col_l:
+        launch = st.button(btn_label, type="primary", disabled=is_running, key="re_launch", use_container_width=True)
+    with col_s:
+        if st.button("⏹ Stop", disabled=not is_running, key="re_stop"):
+            rs = st.session_state.get("run_state", {})
+            stop_evt = rs.get("stop_event")
+            if stop_evt is not None:
+                stop_evt.set()
+                rs["lines"].append("⏹ Stop requested — finishing current turn…")
+            st.rerun()
 
     if launch:
         if run_mode == "Single run":

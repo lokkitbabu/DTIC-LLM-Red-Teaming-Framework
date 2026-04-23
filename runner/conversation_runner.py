@@ -46,7 +46,14 @@ class ConversationRunner:
         self.prompt_format = prompt_format
         self.prior_memory: list[dict] = prior_memory or []
 
-    def run(self, scenario: dict) -> dict:
+    def run(self, scenario: dict, stop_event=None) -> dict:
+        """
+        Run the conversation.
+
+        stop_event: optional threading.Event — if set, the runner exits
+                    cleanly after the current turn completes and saves a
+                    partial run log with stop_reason='stopped'.
+        """
         run_id = new_run_id()
         params = scenario.get("params", {})
         conversation = []
@@ -62,6 +69,11 @@ class ConversationRunner:
         })
 
         for turn in range(self.max_turns):
+            # Check stop signal before each turn
+            if stop_event is not None and stop_event.is_set():
+                stop_reason = "stopped"
+                break
+
             trimmed_history, trimmed = self._trim_history(scenario, conversation)
             context_trims += trimmed
             subject_prompt = self._build_subject_prompt(scenario, trimmed_history)
@@ -83,6 +95,11 @@ class ConversationRunner:
                 break
 
             if turn + 1 >= self.max_turns:
+                break
+
+            # Check stop again before calling interviewer
+            if stop_event is not None and stop_event.is_set():
+                stop_reason = "stopped"
                 break
 
             interviewer_prompt = self._build_interviewer_prompt(scenario, conversation)
