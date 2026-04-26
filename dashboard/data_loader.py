@@ -129,7 +129,7 @@ def apply_filters(
 class DataLoader:
     """Reads and merges run logs and manual scoring CSVs — Supabase-first, local fallback."""
 
-    @st.cache_data
+    @st.cache_data(ttl=60)
     def build_run_index(_self, logs_dir: Path) -> pd.DataFrame:
         """
         Build the run index. Tries Supabase first; falls back to local files.
