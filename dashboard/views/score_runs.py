@@ -68,22 +68,28 @@ def render_score_runs_view(
             except Exception:
                 pass
 
-        # Quick filter: unscored only
-        col_f1, col_f2 = st.columns(2)
+        # Quick filters
+        col_f1, col_f2, col_f3 = st.columns(3)
         with col_f1:
             unscored_only = st.checkbox(
-                "Show only unscored runs" + (f" by {rater_id}" if rater_id else ""),
+                "Show only unscored" + (f" by {rater_id}" if rater_id else ""),
                 value=bool(rater_id),
                 key="score_runs_unscored_only",
             )
         with col_f2:
-            detail_levels = ["All"] + sorted(df["detail_level"].dropna().unique().tolist()) if "detail_level" in df.columns else ["All"]
-            detail_filter = st.selectbox("Detail level", detail_levels, key="score_runs_detail")
+            scenarios = ["All"] + sorted(df["scenario_id"].dropna().unique().tolist()) if "scenario_id" in df.columns else ["All"]
+            scenario_filter = st.selectbox("Scenario", scenarios, key="score_runs_scenario",
+                format_func=lambda x: x.replace("terrorism_recruitment_", "tr_") if x != "All" else x)
+        with col_f3:
+            models = ["All"] + sorted({str(r).split("/")[-1].split("(model=")[-1].rstrip(")") for r in df["model"].dropna()}) if "model" in df.columns else ["All"]
+            model_filter = st.selectbox("Model", models, key="score_runs_model")
 
         if unscored_only and rater_id:
             df = df[~df["run_id"].isin(already_scored)]
-        if "detail_filter" in dir() and detail_filter != "All" and "detail_level" in df.columns:
-            df = df[df["detail_level"] == detail_filter]
+        if scenario_filter != "All" and "scenario_id" in df.columns:
+            df = df[df["scenario_id"] == scenario_filter]
+        if model_filter != "All" and "model" in df.columns:
+            df = df[df["model"].str.contains(model_filter, na=False)]
 
         if df.empty:
             st.success(f"✅ {rater_id} has scored all runs matching current filters.")
