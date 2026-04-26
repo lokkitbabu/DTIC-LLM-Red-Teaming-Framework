@@ -32,11 +32,12 @@ def _clean_model_str(raw: str) -> str:
     m = re.match(r"(\w+)Adapter\(model=(.+)\)$", raw.strip())
     if not m:
         return raw
-    adapter_name = m.group(1).lower()
+    adapter_name = m.group(1).lower()  # 'Together' → 'together'
     model_id = m.group(2)
     _map = {"together": "together", "openai": "openai", "anthropic": "anthropic",
             "grok": "grok", "mistral": "mistral", "huggingface": "hf", "ollama": "ollama"}
-    return f"{_map.get(adapter_name, adapter_name)}:{model_id}"
+    provider = _map.get(adapter_name, adapter_name)
+    return f"{provider}:{model_id}"
 
 
 
