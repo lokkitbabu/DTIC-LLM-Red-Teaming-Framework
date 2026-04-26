@@ -305,7 +305,7 @@ class DataLoader:
                 "run_id": validated.run_id,
                 "timestamp": validated.timestamp,
                 "scenario_id": validated.scenario_id,
-                "model": validated.subject_model,
+                "model": _clean_model(validated.subject_model),
                 "prompt_format": raw.get("prompt_format", "flat"),
                 "session_group_id": raw.get("session_group_id"),
                 "session_number": raw.get("session_number", 1),

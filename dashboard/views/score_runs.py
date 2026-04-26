@@ -69,13 +69,21 @@ def render_score_runs_view(
                 pass
 
         # Quick filter: unscored only
-        unscored_only = st.checkbox(
-            "Show only unscored runs" + (f" by {rater_id}" if rater_id else ""),
-            value=bool(rater_id),
-            key="score_runs_unscored_only",
-        )
+        col_f1, col_f2 = st.columns(2)
+        with col_f1:
+            unscored_only = st.checkbox(
+                "Show only unscored runs" + (f" by {rater_id}" if rater_id else ""),
+                value=bool(rater_id),
+                key="score_runs_unscored_only",
+            )
+        with col_f2:
+            detail_levels = ["All"] + sorted(df["detail_level"].dropna().unique().tolist()) if "detail_level" in df.columns else ["All"]
+            detail_filter = st.selectbox("Detail level", detail_levels, key="score_runs_detail")
+
         if unscored_only and rater_id:
             df = df[~df["run_id"].isin(already_scored)]
+        if "detail_filter" in dir() and detail_filter != "All" and "detail_level" in df.columns:
+            df = df[df["detail_level"] == detail_filter]
 
         if df.empty:
             st.success(f"✅ {rater_id} has scored all runs matching current filters.")
@@ -84,11 +92,13 @@ def render_score_runs_view(
         # Format run labels for selectbox
         def _label(row: pd.Series) -> str:
             short = str(row["run_id"])[:8]
-            model = str(row.get("model", "")).split("/")[-1][:24]
-            scenario = str(row.get("scenario_id", ""))[:20]
+            model = str(row.get("model", "")).split("/")[-1][:20]
+            scenario = str(row.get("scenario_id", ""))
+            detail = str(row.get("detail_level", ""))
             fmt = str(row.get("prompt_format", ""))
             scored = "✅" if row["run_id"] in already_scored else "⬜"
-            return f"{scored}  {short}…  {model}  ·  {scenario}  ·  {fmt}"
+            detail_badge = f" [{detail}]" if detail and detail != "—" else ""
+            return f"{scored}  {short}…  {model}  ·  {scenario}{detail_badge}  ·  {fmt}"
 
         run_labels = {row["run_id"]: _label(row) for _, row in df.iterrows()}
 

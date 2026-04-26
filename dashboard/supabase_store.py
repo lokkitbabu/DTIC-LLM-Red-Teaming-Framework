@@ -41,20 +41,6 @@ def _clean_model_str(raw: str) -> str:
 
 
 
-def _clean_model_str(raw: str) -> str:
-    """Strip adapter class wrapper from stored model string.
-
-    Converts e.g. 'GrokAdapter(model=grok-4.20-0309-non-reasoning)'
-    to 'grok-4.20-0309-non-reasoning'.
-    Also handles full together strings like
-    'TogetherAdapter(model=meta-llama/Llama-3.3-70B-Instruct-Turbo)'
-    """
-    import re as _re
-    # Match Adapter(model=X) pattern
-    m = _re.match(r"\w+Adapter\(model=(.+?)\)$", raw.strip())
-    if m:
-        return m.group(1)
-    return raw.strip()
 
 class SupabaseStore:
     """
