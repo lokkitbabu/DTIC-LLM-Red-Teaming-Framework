@@ -23,6 +23,14 @@ logger = logging.getLogger(__name__)
 METRICS = ["identity_consistency", "cultural_authenticity", "naturalness", "information_yield"]
 
 
+
+def _to_float(v) -> float | None:
+    try:
+        return float(v) if v is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
 def _clean_model_str(raw: str) -> str:
     """
     Convert adapter repr like 'TogetherAdapter(model=deepseek-ai/DeepSeek-V3.1)'
@@ -140,62 +148,74 @@ class SupabaseStore:
 
     def list_runs_with_scores(self, limit: int = 500) -> list[dict]:
         """
-        Return run metadata merged with averaged LLM judge scores from the data JSONB.
-        Fetches full data column and extracts scores in Python (PostgREST
-        does not support JSON path traversal in select()).
+        Return run metadata + pre-extracted LLM scores from the run_index_mv
+        materialized view. Avoids loading full JSONB conversation data.
+        Falls back to direct run_logs query if the MV doesn't exist yet.
         """
         if not self.available:
             return []
         try:
             resp = (
-                self._client.table("run_logs")
-                .select("run_id,scenario_id,subject_model,prompt_format,timestamp,data")
+                self._client.table("run_index_mv")
+                .select(
+                    "run_id,scenario_id,subject_model,effective_prompt_format,"
+                    "timestamp,total_turns,stop_reason,context_trims,"
+                    "llm_identity_consistency,llm_cultural_authenticity,"
+                    "llm_naturalness,llm_information_yield"
+                )
                 .order("timestamp", desc=False)
                 .limit(limit)
                 .execute()
             )
             rows = []
             for r in (resp.data or []):
-                # Clean model string — strip adapter repr if present
-                raw_model = r.get("subject_model", "")
-                model = _clean_model_str(raw_model)
-
                 row = {
                     "run_id": r["run_id"],
                     "scenario_id": r.get("scenario_id", ""),
-                    "model": model,
-                    "prompt_format": r.get("prompt_format") or "flat",
+                    "model": _clean_model_str(r.get("subject_model", "")),
+                    "prompt_format": r.get("effective_prompt_format") or "flat",
                     "timestamp": r.get("timestamp", ""),
+                    "total_turns": r.get("total_turns", "—"),
+                    "stop_reason": r.get("stop_reason", "—"),
+                    "context_trims": r.get("context_trims", 0),
+                    "llm_identity_consistency":  _to_float(r.get("llm_identity_consistency")),
+                    "llm_cultural_authenticity": _to_float(r.get("llm_cultural_authenticity")),
+                    "llm_naturalness":           _to_float(r.get("llm_naturalness")),
+                    "llm_information_yield":     _to_float(r.get("llm_information_yield")),
                 }
-
-                # Extract LLM judge scores from data JSONB
-                data_blob = r.get("data") or {}
-                if isinstance(data_blob, str):
-                    import json as _j
-                    try:
-                        data_blob = _j.loads(data_blob)
-                    except Exception:
-                        data_blob = {}
-
-                scores_blob = data_blob.get("scores", {}) if isinstance(data_blob, dict) else {}
-                llm_judge = scores_blob.get("llm_judge", {}) if isinstance(scores_blob, dict) else {}
-                # scores may be nested under .scores or at top level
-                llm_scores = llm_judge.get("scores", llm_judge) if isinstance(llm_judge, dict) else {}
-
-                for m in METRICS:
-                    v = llm_scores.get(m)
-                    row[f"llm_{m}"] = float(v) if v is not None else None
-
-                # Also extract stop_reason and total_turns from metadata
-                meta = data_blob.get("metadata", {}) if isinstance(data_blob, dict) else {}
-                row["stop_reason"] = meta.get("stop_reason", "—")
-                row["total_turns"] = meta.get("total_turns", "—")
-                row["context_trims"] = meta.get("context_trims", 0)
-
                 rows.append(row)
             return rows
+        except Exception as mv_err:
+            logger.warning("run_index_mv query failed (%s), falling back to run_logs", mv_err)
+            return self._list_runs_fallback(limit)
+
+    def _list_runs_fallback(self, limit: int) -> list[dict]:
+        """Fallback: fetch run_logs without the data column to avoid timeout."""
+        try:
+            resp = (
+                self._client.table("run_logs")
+                .select("run_id,scenario_id,subject_model,prompt_format,timestamp")
+                .order("timestamp", desc=False)
+                .limit(limit)
+                .execute()
+            )
+            return [
+                {
+                    "run_id": r["run_id"],
+                    "scenario_id": r.get("scenario_id", ""),
+                    "model": _clean_model_str(r.get("subject_model", "")),
+                    "prompt_format": r.get("prompt_format") or "flat",
+                    "timestamp": r.get("timestamp", ""),
+                    "total_turns": "—", "stop_reason": "—", "context_trims": 0,
+                    "llm_identity_consistency": None,
+                    "llm_cultural_authenticity": None,
+                    "llm_naturalness": None,
+                    "llm_information_yield": None,
+                }
+                for r in (resp.data or [])
+            ]
         except Exception as e:
-            logger.error("list_runs_with_scores failed: %s", e)
+            logger.error("_list_runs_fallback failed: %s", e)
             return []
 
     # ------------------------------------------------------------------
