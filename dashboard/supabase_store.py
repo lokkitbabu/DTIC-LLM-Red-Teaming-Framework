@@ -23,6 +23,38 @@ logger = logging.getLogger(__name__)
 METRICS = ["identity_consistency", "cultural_authenticity", "naturalness", "information_yield"]
 
 
+def _clean_model_str(raw: str) -> str:
+    """
+    Convert adapter repr like 'TogetherAdapter(model=deepseek-ai/DeepSeek-V3.1)'
+    to clean provider:model format 'together:deepseek-ai/DeepSeek-V3.1'.
+    """
+    import re
+    m = re.match(r"(\w+)Adapter\(model=(.+)\)$", raw.strip())
+    if not m:
+        return raw
+    adapter_name = m.group(1).lower()
+    model_id = m.group(2)
+    _map = {"together": "together", "openai": "openai", "anthropic": "anthropic",
+            "grok": "grok", "mistral": "mistral", "huggingface": "hf", "ollama": "ollama"}
+    return f"{_map.get(adapter_name, adapter_name)}:{model_id}"
+
+
+
+def _clean_model_str(raw: str) -> str:
+    """Strip adapter class wrapper from stored model string.
+
+    Converts e.g. 'GrokAdapter(model=grok-4.20-0309-non-reasoning)'
+    to 'grok-4.20-0309-non-reasoning'.
+    Also handles full together strings like
+    'TogetherAdapter(model=meta-llama/Llama-3.3-70B-Instruct-Turbo)'
+    """
+    import re as _re
+    # Match Adapter(model=X) pattern
+    m = _re.match(r"\w+Adapter\(model=(.+?)\)$", raw.strip())
+    if m:
+        return m.group(1)
+    return raw.strip()
+
 class SupabaseStore:
     """
     Thin wrapper around the Supabase Python client.
@@ -122,32 +154,57 @@ class SupabaseStore:
     def list_runs_with_scores(self, limit: int = 500) -> list[dict]:
         """
         Return run metadata merged with averaged LLM judge scores from the data JSONB.
-        Extracts scores.llm_judge from the stored JSON blob.
+        Fetches full data column and extracts scores in Python (PostgREST
+        does not support JSON path traversal in select()).
         """
         if not self.available:
             return []
         try:
             resp = (
                 self._client.table("run_logs")
-                .select("run_id,scenario_id,subject_model,prompt_format,timestamp,data->scores")
+                .select("run_id,scenario_id,subject_model,prompt_format,timestamp,data")
                 .order("timestamp", desc=False)
                 .limit(limit)
                 .execute()
             )
             rows = []
             for r in (resp.data or []):
+                # Clean model string — strip adapter repr if present
+                raw_model = r.get("subject_model", "")
+                model = _clean_model_str(raw_model)
+
                 row = {
                     "run_id": r["run_id"],
-                    "scenario_id": r["scenario_id"],
-                    "model": r["subject_model"],
-                    "prompt_format": r.get("prompt_format", "flat"),
-                    "timestamp": r["timestamp"],
+                    "scenario_id": r.get("scenario_id", ""),
+                    "model": model,
+                    "prompt_format": r.get("prompt_format") or "flat",
+                    "timestamp": r.get("timestamp", ""),
                 }
-                scores_blob = r.get("scores") or {}
-                llm = scores_blob.get("llm_judge", {}) if isinstance(scores_blob, dict) else {}
+
+                # Extract LLM judge scores from data JSONB
+                data_blob = r.get("data") or {}
+                if isinstance(data_blob, str):
+                    import json as _j
+                    try:
+                        data_blob = _j.loads(data_blob)
+                    except Exception:
+                        data_blob = {}
+
+                scores_blob = data_blob.get("scores", {}) if isinstance(data_blob, dict) else {}
+                llm_judge = scores_blob.get("llm_judge", {}) if isinstance(scores_blob, dict) else {}
+                # scores may be nested under .scores or at top level
+                llm_scores = llm_judge.get("scores", llm_judge) if isinstance(llm_judge, dict) else {}
+
                 for m in METRICS:
-                    v = llm.get(m) or (llm.get("scores") or {}).get(m)
+                    v = llm_scores.get(m)
                     row[f"llm_{m}"] = float(v) if v is not None else None
+
+                # Also extract stop_reason and total_turns from metadata
+                meta = data_blob.get("metadata", {}) if isinstance(data_blob, dict) else {}
+                row["stop_reason"] = meta.get("stop_reason", "—")
+                row["total_turns"] = meta.get("total_turns", "—")
+                row["context_trims"] = meta.get("context_trims", 0)
+
                 rows.append(row)
             return rows
         except Exception as e:

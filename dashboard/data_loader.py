@@ -187,9 +187,9 @@ class DataLoader:
                 "prompt_format": r.get("prompt_format", "flat"),
                 "session_group_id": r.get("session_group_id"),
                 "session_number": r.get("session_number", 1),
-                "stop_reason": "—",
-                "total_turns": "—",
-                "context_trims": 0,
+                "stop_reason": r.get("stop_reason", "—"),
+                "total_turns": r.get("total_turns", "—"),
+                "context_trims": r.get("context_trims", 0),
             }
             for m in METRICS:
                 record[f"llm_{m}"] = llm_scores[m]
