@@ -83,20 +83,45 @@ def _render_leaderboard(run_index: pd.DataFrame, run_scores_df: pd.DataFrame) ->
     """Ranked model table — primary source: run_scores.csv averages; fallback: run_index."""
     st.markdown("### Leaderboard")
 
+    def _shorten(m: str) -> str:
+        """Convert provider:model/path to a readable short name."""
+        _names = {
+            "meta-llama/Llama-3.3-70B-Instruct-Turbo": "Llama 3.3 70B",
+            "deepseek-ai/DeepSeek-V3.1": "DeepSeek V3.1",
+            "mistral-large-latest": "Mistral Large 3",
+            "claude-sonnet-4-6": "Claude Sonnet 4.6",
+            "gpt-5.4": "GPT-5.4",
+            "grok-4.20-0309-non-reasoning": "Grok 4.20",
+        }
+        # Strip provider prefix
+        model_id = m.split(":")[-1] if ":" in m else m
+        return _names.get(model_id, model_id.split("/")[-1][:28])
+
     if not run_scores_df.empty and all(m in run_scores_df.columns for m in METRICS):
         numeric = run_scores_df[["model"] + METRICS].copy()
+        numeric["model"] = numeric["model"].apply(_shorten)
         for m in METRICS:
             numeric[m] = pd.to_numeric(numeric[m], errors="coerce")
         grouped = numeric.groupby("model")[METRICS].mean()
-        n_col = run_scores_df.groupby("model").size().rename("N Scores")
+        n_col = run_scores_df.copy()
+        n_col["model"] = n_col["model"].apply(_shorten)
+        n_col = n_col.groupby("model").size().rename("N Scores")
         source_label = "Manual scores (run_scores.csv)"
     else:
-        available = [m for m in METRICS if m in run_index.columns]
-        if not available:
+        available = [f"llm_{m}" for m in METRICS if f"llm_{m}" in run_index.columns]
+        available_bare = [m for m in METRICS if m in run_index.columns]
+        use_cols = available if available else available_bare
+        if not use_cols:
             st.info("No scores available for leaderboard.")
             return
-        grouped = run_index.groupby("model")[available].mean()
-        n_col = run_index.groupby("model").size().rename("N Runs")
+        ri = run_index.copy()
+        ri["model"] = ri["model"].apply(_shorten)
+        # Rename llm_ prefixed columns
+        rename_map = {f"llm_{m}": m for m in METRICS if f"llm_{m}" in ri.columns}
+        ri = ri.rename(columns=rename_map)
+        use_bare = [m for m in METRICS if m in ri.columns]
+        grouped = ri.groupby("model")[use_bare].mean()
+        n_col = ri.groupby("model").size().rename("N Runs")
         source_label = "LLM judge scores"
 
     grouped["Total"] = grouped[METRICS].sum(axis=1)

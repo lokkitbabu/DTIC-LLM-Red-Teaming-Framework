@@ -291,7 +291,8 @@ if _selected_tags:
 # ---------------------------------------------------------------------------
 
 if page == "Results":
-    planned = st.sidebar.number_input("Planned runs", min_value=1, value=30, step=1, key="planned_runs")
+    _default_planned = max(30, len(run_index)) if not run_index.empty else 30
+    planned = st.sidebar.number_input("Planned runs", min_value=1, value=_default_planned, step=1, key="planned_runs")
     render_results_view(filtered_index, scoring_dir=SCORING_DIR, planned_runs=int(planned))
 
 elif page == "Paper Findings":
