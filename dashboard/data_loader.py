@@ -229,23 +229,46 @@ class DataLoader:
                 except Exception as exc:
                     logger.warning("Could not read scoring CSV %s: %s", csv_path, exc)
 
-        # Also load run-level manual scores from run_scores.csv
-        run_scores_path = scoring_dir / "run_scores.csv"
+        # Load run-level manual scores — Supabase primary, local CSV fallback
         run_score_avgs: dict[str, dict] = {}
-        if run_scores_path.exists():
-            try:
-                rs_df = pd.read_csv(run_scores_path, dtype={"run_id": str})
-                for rid, grp in rs_df.groupby("run_id"):
-                    avgs = {}
-                    for m in METRICS:
-                        if m in grp.columns:
-                            vals = pd.to_numeric(grp[m], errors="coerce").dropna()
-                            avgs[m] = float(vals.mean()) if not vals.empty else None
-                        else:
-                            avgs[m] = None
-                    run_score_avgs[str(rid)] = avgs
-            except Exception:
-                pass
+        try:
+            from dashboard.supabase_store import get_store as _get_store
+            _store = _get_store()
+            if _store.available:
+                _resp = _store._client.table("run_scores").select(
+                    "run_id, rater_id, identity_consistency, cultural_authenticity, naturalness, information_yield, total"
+                ).execute()
+                if _resp.data:
+                    _rs_df = pd.DataFrame(_resp.data)
+                    for rid, grp in _rs_df.groupby("run_id"):
+                        avgs = {}
+                        for m in METRICS:
+                            if m in grp.columns:
+                                vals = pd.to_numeric(grp[m], errors="coerce").dropna()
+                                avgs[m] = float(vals.mean()) if not vals.empty else None
+                            else:
+                                avgs[m] = None
+                        run_score_avgs[str(rid)] = avgs
+        except Exception:
+            pass
+
+        # Fallback: local run_scores.csv
+        if not run_score_avgs:
+            run_scores_path = scoring_dir / "run_scores.csv"
+            if run_scores_path.exists():
+                try:
+                    rs_df = pd.read_csv(run_scores_path, dtype={"run_id": str})
+                    for rid, grp in rs_df.groupby("run_id"):
+                        avgs = {}
+                        for m in METRICS:
+                            if m in grp.columns:
+                                vals = pd.to_numeric(grp[m], errors="coerce").dropna()
+                                avgs[m] = float(vals.mean()) if not vals.empty else None
+                            else:
+                                avgs[m] = None
+                        run_score_avgs[str(rid)] = avgs
+                except Exception:
+                    pass
 
         _NON_RUN_FILES = {"flags.json"}
         skipped = 0

@@ -98,11 +98,20 @@ def _load_human_scores() -> pd.DataFrame:
         if human_df.empty or run_df.empty:
             return pd.DataFrame()
         merged = human_df.merge(run_df, on="run_id")
-        merged["model"] = merged["subject_model"].map(MODEL_SHORT).fillna(merged["subject_model"])
-        for m in METRICS + ["total"]:
-            merged[m] = pd.to_numeric(merged[m], errors="coerce")
+        # Clean model names using MODEL_SHORT, fall back to last path segment
+        def _clean(raw):
+            direct = MODEL_SHORT.get(raw)
+            if direct:
+                return direct
+            model_id = raw.split(":")[-1] if ":" in raw else raw
+            return MODEL_SHORT.get(model_id, model_id.split("/")[-1].split("(model=")[-1].rstrip(")")[:24])
+        merged["model"] = merged["subject_model"].apply(_clean)
+        for m in _METRICS + ["total"]:
+            if m in merged.columns:
+                merged[m] = pd.to_numeric(merged[m], errors="coerce")
         return merged
     except Exception as e:
+        st.warning(f"Human scores load error: {e}")
         return pd.DataFrame()
 
 
