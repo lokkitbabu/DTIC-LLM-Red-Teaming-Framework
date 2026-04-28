@@ -141,16 +141,16 @@ def _render_leaderboard(run_index: pd.DataFrame, run_scores_df: pd.DataFrame) ->
     fig = go.Figure()
     for i, metric in enumerate(METRICS):
         label = METRIC_LABELS_FULL[metric]
-        if label in grouped.columns:
+        if label in result.columns:
             fig.add_trace(go.Bar(
                 name=METRIC_LABELS[metric],
-                x=grouped["Model"], y=grouped[label],
+                x=result["Model"], y=result[label],
                 marker_color=colors_seq[i % len(colors_seq)],
             ))
     fig.add_trace(go.Scatter(
-        name="Total", x=grouped["Model"], y=grouped["Total"],
+        name="Total", x=result["Model"], y=result["Total"],
         mode="markers+text", marker=dict(size=10, color="#1a1a1a"),
-        text=grouped["Total"].astype(str), textposition="top center", yaxis="y2",
+        text=result["Total"].astype(str), textposition="top center", yaxis="y2",
     ))
     fig.update_layout(
         barmode="stack", title="Model Leaderboard — Stacked Score by Metric",
