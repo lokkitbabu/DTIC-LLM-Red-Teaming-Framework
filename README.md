@@ -57,12 +57,12 @@ This framework answers that through structured **two-model conversations**: one 
 
 | # | Model | Provider string | Guardrail level |
 |---|-------|----------------|----------------|
-| 1 | **Llama 3.3 70B Turbo** | `together:meta-llama/Llama-3.3-70B-Instruct-Turbo` | Low |
+| 1 | **Llama 3.3 70B Turbo** | `together:meta-llama/Llama-3.3-70B-Instruct-Turbo` | Medium |
 | 2 | **DeepSeek V3.1** | `together:deepseek-ai/DeepSeek-V3.1` | Low–Medium |
 | 3 | **Mistral Large 3** | `mistral:mistral-large-latest` | Medium |
 | 4 | **Claude Sonnet 4.6** | `anthropic:claude-sonnet-4-6` | High |
-| 5 | **GPT-5.4** | `openai:gpt-5.4` | High |
-| 6 | **Grok 4.20** | `grok:grok-4.20-0309-non-reasoning` | Medium–High |
+| 5 | **GPT-5.4** | `openai:gpt-5.4` | Medium-High |
+| 6 | **Grok 4.20** | `grok:grok-4.20-0309-non-reasoning` | Low-Medium |
 
 **Fixed interviewer (not evaluated):** Grok 4.1 Fast (`grok:grok-4-1-fast-reasoning`)  
 **Dual judge (averaged):** GPT-5.4 + Claude Sonnet 4.6
