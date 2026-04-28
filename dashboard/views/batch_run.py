@@ -321,6 +321,10 @@ def _parallel_worker(
 
     def _run_one(combo):
         scenario_path, model_str, rep = combo
+        # Stagger Mistral calls to avoid burst rate limits (their limit is ~1 req/s)
+        if "mistral" in model_str.lower():
+            import time as _t
+            _t.sleep(rep * 2.0)  # rep 1=0s, rep 2=2s, rep 3=4s stagger
         scenario_stem = scenario_path.stem
         model_short = model_str.split(":")[-1].split("/")[-1][:20]
         label = f"{scenario_stem} × {model_short} rep{rep}"
