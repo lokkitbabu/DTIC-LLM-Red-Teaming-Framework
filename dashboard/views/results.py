@@ -116,7 +116,12 @@ def _render_leaderboard(run_index: pd.DataFrame, run_scores_df: pd.DataFrame) ->
             return
         ri = run_index.copy()
         ri["model"] = ri["model"].apply(_shorten)
-        # Rename llm_ prefixed columns
+        # Drop any bare metric columns — they may coexist with llm_ prefixed ones
+        # and would create duplicates after rename
+        bare_to_drop = [m for m in METRICS if m in ri.columns and f"llm_{m}" in ri.columns]
+        if bare_to_drop:
+            ri = ri.drop(columns=bare_to_drop)
+        # Rename llm_ prefixed columns to bare metric names
         rename_map = {f"llm_{m}": m for m in METRICS if f"llm_{m}" in ri.columns}
         ri = ri.rename(columns=rename_map)
         use_bare = [m for m in METRICS if m in ri.columns]
