@@ -125,8 +125,12 @@ def _render_leaderboard(run_index: pd.DataFrame, run_scores_df: pd.DataFrame) ->
         source_label = "LLM judge scores"
 
     grouped["Total"] = grouped[METRICS].sum(axis=1)
-    grouped = grouped.sort_values("Total", ascending=False).reset_index()
-    grouped = grouped.merge(n_col.reset_index(), on="model", how="left")
+    grouped = grouped.sort_values("Total", ascending=False).reset_index(drop=True)
+    n_df = n_col.reset_index()
+    # Avoid duplicate 'model' column — n_col.reset_index() produces one too
+    grouped = grouped.merge(n_df, on="model", how="left")
+    # Drop any duplicate columns that crept in
+    grouped = grouped.loc[:, ~grouped.columns.duplicated()]
     grouped.insert(0, "Rank", range(1, len(grouped) + 1))
     leader_total = grouped["Total"].iloc[0]
     grouped["vs #1"] = (grouped["Total"] - leader_total).round(2).apply(
