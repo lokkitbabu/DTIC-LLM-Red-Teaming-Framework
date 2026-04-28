@@ -84,7 +84,6 @@ def _render_leaderboard(run_index: pd.DataFrame, run_scores_df: pd.DataFrame) ->
     st.markdown("### Leaderboard")
 
     def _shorten(m: str) -> str:
-        """Convert provider:model/path to a readable short name."""
         _names = {
             "meta-llama/Llama-3.3-70B-Instruct-Turbo": "Llama 3.3 70B",
             "deepseek-ai/DeepSeek-V3.1": "DeepSeek V3.1",
@@ -93,60 +92,50 @@ def _render_leaderboard(run_index: pd.DataFrame, run_scores_df: pd.DataFrame) ->
             "gpt-5.4": "GPT-5.4",
             "grok-4.20-0309-non-reasoning": "Grok 4.20",
         }
-        # Strip provider prefix
         model_id = m.split(":")[-1] if ":" in m else m
         return _names.get(model_id, model_id.split("/")[-1][:28])
 
+    # ── Build a clean scores DataFrame: columns = [model] + METRICS ──────────
     if not run_scores_df.empty and all(m in run_scores_df.columns for m in METRICS):
-        numeric = run_scores_df[["model"] + METRICS].copy()
-        numeric["model"] = numeric["model"].apply(_shorten)
+        src = run_scores_df[["model"] + METRICS].copy()
+        src["model"] = src["model"].apply(_shorten)
         for m in METRICS:
-            numeric[m] = pd.to_numeric(numeric[m], errors="coerce")
-        grouped = numeric.groupby("model")[METRICS].mean()
-        n_col = run_scores_df.copy()
-        n_col["model"] = n_col["model"].apply(_shorten)
-        n_col = n_col.groupby("model").size().rename("N Scores")
-        source_label = "Manual scores (run_scores.csv)"
+            src[m] = pd.to_numeric(src[m], errors="coerce")
+        source_label = "Manual scores"
     else:
-        available = [f"llm_{m}" for m in METRICS if f"llm_{m}" in run_index.columns]
-        available_bare = [m for m in METRICS if m in run_index.columns]
-        use_cols = available if available else available_bare
-        if not use_cols:
-            st.info("No scores available for leaderboard.")
-            return
-        ri = run_index.copy()
-        ri["model"] = ri["model"].apply(_shorten)
-        # Drop any bare metric columns — they may coexist with llm_ prefixed ones
-        # and would create duplicates after rename
-        bare_to_drop = [m for m in METRICS if m in ri.columns and f"llm_{m}" in ri.columns]
-        if bare_to_drop:
-            ri = ri.drop(columns=bare_to_drop)
-        # Rename llm_ prefixed columns to bare metric names
-        rename_map = {f"llm_{m}": m for m in METRICS if f"llm_{m}" in ri.columns}
-        ri = ri.rename(columns=rename_map)
-        use_bare = [m for m in METRICS if m in ri.columns]
-        grouped = ri.groupby("model")[use_bare].mean()
-        n_col = ri.groupby("model").size().rename("N Runs")
+        # Build from run_index — extract only llm_ columns, rename to bare
+        src_rows = []
+        for _, row in run_index.iterrows():
+            model = _shorten(str(row.get("model", "")))
+            r = {"model": model}
+            for m in METRICS:
+                v = row.get(f"llm_{m}", row.get(m))
+                r[m] = float(v) if v is not None and not (isinstance(v, float) and pd.isna(v)) else None
+            src_rows.append(r)
+        src = pd.DataFrame(src_rows)
+        for m in METRICS:
+            src[m] = pd.to_numeric(src[m], errors="coerce")
         source_label = "LLM judge scores"
 
-    grouped["Total"] = grouped[METRICS].sum(axis=1)
-    grouped = grouped.sort_values("Total", ascending=False)
-    # grouped.index is 'model' after groupby — bring it back as a column
-    grouped = grouped.reset_index()   # now has 'model' column
-    # Join n_col (also indexed by model) directly to avoid duplicate column from merge
-    grouped = grouped.join(n_col, on="model", how="left")
-    grouped.insert(0, "Rank", range(1, len(grouped) + 1))
-    leader_total = grouped["Total"].iloc[0]
-    grouped["vs #1"] = (grouped["Total"] - leader_total).round(2).apply(
-        lambda v: "—" if v == 0 else f"{v:+.2f}"
-    )
+    if src.empty or src[METRICS].isna().all().all():
+        st.info("No scores available for leaderboard.")
+        return
+
+    # ── Aggregate ─────────────────────────────────────────────────────────────
+    agg = src.groupby("model", as_index=False)[METRICS].mean()
+    counts = src.groupby("model", as_index=False).size().rename(columns={"size": "N Runs"})
+    result = agg.merge(counts, on="model", how="left")
+    result["Total"] = result[METRICS].sum(axis=1)
+    result = result.sort_values("Total", ascending=False).reset_index(drop=True)
+    result.insert(0, "Rank", range(1, len(result) + 1))
+    leader = result["Total"].iloc[0]
+    result["vs #1"] = result["Total"].apply(lambda v: "—" if v == leader else f"{v - leader:+.2f}")
     for m in METRICS + ["Total"]:
-        if m in grouped.columns:
-            grouped[m] = grouped[m].round(2)
-    grouped = grouped.rename(columns={"model": "Model", **METRIC_LABELS_FULL})
+        result[m] = result[m].round(2)
+    result = result.rename(columns={"model": "Model", **METRIC_LABELS_FULL})
 
     st.caption(f"Source: {source_label}")
-    st.dataframe(grouped, width='stretch', hide_index=True)
+    st.dataframe(result, width='stretch', hide_index=True)
 
     colors_seq = px.colors.qualitative.Set2
     fig = go.Figure()
