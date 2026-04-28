@@ -388,3 +388,4 @@ elif page == "Prune Runs":
 if st.session_state.pop("_needs_rerun", False):
     time.sleep(0.8)
     st.rerun()
+
