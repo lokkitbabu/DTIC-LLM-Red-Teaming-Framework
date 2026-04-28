@@ -92,7 +92,7 @@ def render_statistics_view(
     with col_src:
         score_source = st.radio(
             "Score source",
-            ["LLM judge (from run logs)", "Human raters (from scoring CSVs)", "Both (averaged)"],
+            ["LLM judge (from run logs)", "Human raters (from Supabase)", "Both (averaged)"],
             horizontal=True,
             key="stats_source",
         )
@@ -229,6 +229,21 @@ def _get_available_prompts() -> list[str]:
         return []
 
 
+def _load_human_scores_from_supabase() -> pd.DataFrame:
+    """Load all run_scores from Supabase as a flat DataFrame."""
+    try:
+        from dashboard.supabase_store import get_store
+        store = get_store()
+        if not store.available:
+            return pd.DataFrame()
+        resp = store._client.table("run_scores").select(
+            "run_id, rater_id, identity_consistency, cultural_authenticity, naturalness, information_yield, total"
+        ).execute()
+        return pd.DataFrame(resp.data or [])
+    except Exception:
+        return pd.DataFrame()
+
+
 def _load_judge_scores_from_supabase(
     meta: pd.DataFrame,
     prompt_filter: list[str] | None,
@@ -309,10 +324,8 @@ def _build_score_df(
 
     if "Human" in source or "Both" in source:
         try:
-            rs_path = scoring_dir / "run_scores.csv"
-            if rs_path.exists():
-                human_df = pd.read_csv(rs_path, dtype={"run_id": str})
-                # Average across raters
+            human_df = _load_human_scores_from_supabase()
+            if not human_df.empty:
                 numeric = [m for m in _METRICS if m in human_df.columns]
                 human_avg = (
                     human_df.groupby("run_id")[numeric]
@@ -322,6 +335,20 @@ def _build_score_df(
                 merged = meta.merge(human_avg, on="run_id", how="inner")
                 if not merged.empty:
                     frames.append(merged)
+            else:
+                # Fallback to local CSV
+                rs_path = scoring_dir / "run_scores.csv"
+                if rs_path.exists():
+                    human_df = pd.read_csv(rs_path, dtype={"run_id": str})
+                    numeric = [m for m in _METRICS if m in human_df.columns]
+                    human_avg = (
+                        human_df.groupby("run_id")[numeric]
+                        .apply(lambda g: g.apply(pd.to_numeric, errors="coerce").mean())
+                        .reset_index()
+                    )
+                    merged = meta.merge(human_avg, on="run_id", how="inner")
+                    if not merged.empty:
+                        frames.append(merged)
         except Exception:
             pass
 
