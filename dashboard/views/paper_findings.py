@@ -145,10 +145,24 @@ def render_paper_findings() -> None:
     ])].copy()
 
     # Filter to Grok strict for ablation (consistent judge)
+    # Prefer Grok strict for ablation — fall back to any available judge scores
     ablation_grok = ablation[
         (ablation["judge_model"] == "grok:grok-4-1-fast-reasoning") &
         (ablation["prompt_name"] == "strict")
     ].copy()
+    # If some models have no Grok scores, supplement with any strict scores
+    models_with_grok = set(ablation_grok["model"].unique())
+    models_all = set(ablation["model"].unique())
+    missing = models_all - models_with_grok
+    if missing:
+        fallback = ablation[
+            ablation["model"].isin(missing) &
+            (ablation["prompt_name"] == "strict")
+        ].copy()
+        if fallback.empty:
+            # Any judge, any prompt
+            fallback = ablation[ablation["model"].isin(missing)].copy()
+        ablation_grok = pd.concat([ablation_grok, fallback], ignore_index=True)
 
     # Filter probe to Grok strict for fair comparison
     probe_grok = probe[
