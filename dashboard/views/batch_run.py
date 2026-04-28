@@ -219,8 +219,11 @@ def _render_progress() -> None:
     if is_running:
         active_list = br_state.get("active", [])
         active_str = ", ".join(active_list[:3]) + ("…" if len(active_list) > 3 else "")
+        total_submitted = br_state.get("total", 1)
+        queued = total_submitted - completed - len(active_list)
+        queue_str = f"  |  ⏳ {queued} queued" if queued > 0 else ""
         st.progress(completed / total,
-                    text=f"▶ {completed}/{total} complete  |  running: {active_str or 'starting…'}")
+                    text=f"▶ {completed}/{total} done  |  🔄 {active_str or 'starting…'}{queue_str}")
     elif br_state.get("stop_event") and br_state["stop_event"].is_set() and not is_running:
         st.warning(f"⏹ Stopped after {completed}/{total} run(s). {len(errors)} error(s).")
     elif errors:
@@ -339,16 +342,29 @@ def _parallel_worker(
         scenario_stem = scenario_path.stem
         model_short = model_str.split(":")[-1].split("/")[-1][:20]
         label = f"{scenario_stem} × {model_short} rep{rep}"
+        provider = _get_provider(model_str)
+        sem = _provider_semaphores.get(provider)
 
-        # Skip if already stopped before we even start
+        # Skip if already stopped
         if stop_event is not None and stop_event.is_set():
             with lock:
                 state["lines"].append(f"[{label}] skipped (stop requested)")
                 state["completed"] += 1
             return
 
+        # If provider is rate-limited (e.g. Mistral semaphore=1), log that we're queued
+        if sem and sem._value == 0:  # already at capacity
+            with lock:
+                state["lines"].append(f"⏳ [{label}] queued — waiting for {provider} rate-limit slot…")
+
+        # Block until we have a slot for this provider
+        if sem:
+            sem.acquire()
+
+        # Now actually running
         with lock:
             state["active"].append(label)
+            state["lines"].append(f"▶ [{label}] starting…")
 
         try:
             _run_one_combo(
@@ -370,7 +386,6 @@ def _parallel_worker(
             )
         finally:
             if sem:
-                # Add inter-call delay for strict rate-limited providers before releasing
                 if provider == "mistral":
                     import time as _time
                     _time.sleep(_MISTRAL_INTER_CALL_DELAY)
