@@ -319,12 +319,23 @@ def _parallel_worker(
 
     lock = threading.Lock()
 
+    # Provider-level semaphores to prevent burst rate limits.
+    # Mistral free tier: ~1 req/s -> serialize all Mistral calls.
+    import threading as _th
+    _provider_semaphores = {
+        "mistral": _th.Semaphore(1),   # 1 concurrent Mistral call max
+        "together": _th.Semaphore(4),  # Together is generous
+        "openai":   _th.Semaphore(3),
+        "anthropic": _th.Semaphore(3),
+        "grok":     _th.Semaphore(3),
+    }
+    _MISTRAL_INTER_CALL_DELAY = 3.0  # seconds between Mistral calls
+
+    def _get_provider(model_str: str) -> str:
+        return model_str.split(":")[0].lower() if ":" in model_str else "other"
+
     def _run_one(combo):
         scenario_path, model_str, rep = combo
-        # Stagger Mistral calls to avoid burst rate limits (their limit is ~1 req/s)
-        if "mistral" in model_str.lower():
-            import time as _t
-            _t.sleep(rep * 2.0)  # rep 1=0s, rep 2=2s, rep 3=4s stagger
         scenario_stem = scenario_path.stem
         model_short = model_str.split(":")[-1].split("/")[-1][:20]
         label = f"{scenario_stem} × {model_short} rep{rep}"
@@ -358,6 +369,12 @@ def _parallel_worker(
                 stop_event=stop_event,
             )
         finally:
+            if sem:
+                # Add inter-call delay for strict rate-limited providers before releasing
+                if provider == "mistral":
+                    import time as _time
+                    _time.sleep(_MISTRAL_INTER_CALL_DELAY)
+                sem.release()
             with lock:
                 state["completed"] += 1
                 if label in state["active"]:
