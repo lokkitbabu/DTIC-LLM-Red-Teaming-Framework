@@ -98,10 +98,10 @@ def render_summary_view(
     cols = [c for c in DISPLAY_COLUMNS if c in df.columns]
     display_df = df[cols].reset_index(drop=True).copy()
 
-    # Prepend 🚩 to run_id for flagged runs
+    # Prepend  to run_id for flagged runs
     if "run_id" in display_df.columns:
         display_df["run_id"] = display_df["run_id"].apply(
-            lambda rid: f"🚩 {rid}" if rid in flagged_ids else rid
+            lambda rid: f" {rid}" if rid in flagged_ids else rid
         )
 
     event = st.dataframe(
@@ -116,6 +116,6 @@ def render_summary_view(
     if selected_rows:
         # Strip the flag icon prefix before returning the run_id
         raw_id = str(display_df.iloc[selected_rows[0]]["run_id"])
-        return raw_id.removeprefix("🚩 ")
+        return raw_id.removeprefix(" ")
 
     return None

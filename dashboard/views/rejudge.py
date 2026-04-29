@@ -131,7 +131,7 @@ def render_rejudge_view(
     is_running = rj_state is not None and rj_state.get("running", False)
 
     if st.button(
-        f"⚖ Start re-judging ({len(selected_ids)} runs)",
+        f"Start re-judging ({len(selected_ids)} runs)",
         type="primary",
         key="rj_launch",
         disabled=is_running,
@@ -165,11 +165,11 @@ def _render_rejudge_status() -> None:
     error = rj_state.get("error")
 
     if is_running:
-        st.progress(completed / total, text=f"⚖ Judging {completed}/{total}…")
+        st.progress(completed / total, text=f"Judging {completed}/{total}…")
     elif error:
         st.error(f"Failed: {error}")
     else:
-        st.success(f"✅ Done — {completed}/{total} runs judged")
+        st.success(f"Done: {completed}/{total} runs judged")
 
     if lines:
         with st.expander("Log", expanded=is_running):
@@ -231,11 +231,11 @@ def _rejudge_worker(
             # Load run data
             run_data = _load_run_data(run_id, logs_dir)
             if not run_data:
-                state["lines"].append(f"  ✗ {run_id[:8]}… — not found")
+                state["lines"].append(f"  FAIL {run_id[:8]}… — not found")
                 state["completed"] += 1
                 continue
 
-            state["lines"].append(f"  ⚖ {run_id[:8]}…  judging with {judge_model_str.split(':')[-1]}…")
+            state["lines"].append(f"  [judge] {run_id[:8]}…  judging with {judge_model_str.split(':')[-1]}…")
 
             result = judge.evaluate(run_data)
             scores = result.get("scores", result) if isinstance(result, dict) else {}
@@ -252,7 +252,7 @@ def _rejudge_worker(
                 if k in _METRICS and isinstance(v, (int, float))
             )
             state["lines"].append(
-                f"  ✓ {run_id[:8]}…  total={total}/20  "
+                f"  OK {run_id[:8]}…  total={total}/20  "
                 f"IC={scores.get('identity_consistency','?')} "
                 f"CA={scores.get('cultural_authenticity','?')} "
                 f"N={scores.get('naturalness','?')} "
@@ -260,7 +260,7 @@ def _rejudge_worker(
             )
 
         except Exception as e:
-            state["lines"].append(f"  ✗ {run_id[:8]}… — {str(e)[:80]}")
+            state["lines"].append(f"  FAIL {run_id[:8]}… — {str(e)[:80]}")
 
         state["completed"] += 1
 

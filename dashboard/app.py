@@ -62,7 +62,7 @@ SCENARIOS_DIR = Path("scenarios")
 # ---------------------------------------------------------------------------
 st.set_page_config(
     page_title="Analytics Dashboard",
-    page_icon="📊",
+    page_icon="chart",
     layout="wide",
 )
 
@@ -109,12 +109,12 @@ page = st.sidebar.radio(
     options=["Results", "Paper Findings", "Statistics", "Live Chat", "Run Experiments", "Coordination", "Summary", "Run Detail", "Charts", "Compare", "Run Scenario", "Score Runs", "Re-Judge", "Agreement", "Scenarios", "Prune Runs"],
 )
 
-if st.sidebar.button("🔄 Refresh"):
+if st.sidebar.button("Refresh"):
     st.cache_data.clear()
     st.rerun()
 
 # Upload a run log directly
-with st.sidebar.expander("📤 Upload run log"):
+with st.sidebar.expander("Upload run log"):
     uploaded = st.file_uploader("Drop a run JSON", type="json", key="log_uploader")
     if uploaded:
         import json as _ujson
@@ -144,7 +144,7 @@ with st.sidebar.expander("📤 Upload run log"):
 # Show skip reasons if any files were rejected
 skipped_reasons = st.session_state.get("skipped_reasons", [])
 if skipped_reasons:
-    with st.sidebar.expander(f"⚠️ {len(skipped_reasons)} file(s) skipped"):
+    with st.sidebar.expander(f"️ {len(skipped_reasons)} file(s) skipped"):
         for r in skipped_reasons:
             st.caption(r)
 
@@ -320,9 +320,9 @@ def _dataset_banner():
     """Render a consistent dataset context badge at the top of every page."""
     ds = st.session_state.get('sidebar_dataset', 'All')
     if ds == 'Fidelity Ablation (full/medium/bare)':
-        st.info('🔬 **Dataset: Fidelity Ablation** — showing full / medium / bare scenarios only', icon=None)
+        st.info('[Fidelity Ablation] Dataset filter active: — showing full / medium / bare scenarios only', icon=None)
     elif ds == 'Probe Scenario':
-        st.info('🎯 **Dataset: Probe Scenario** — showing terrorism_recruitment_probe only', icon=None)
+        st.info('[Probe Scenario] Dataset filter active: — showing terrorism_recruitment_probe only', icon=None)
     # No banner for All — keeps UI clean
 
 if page == "Results":

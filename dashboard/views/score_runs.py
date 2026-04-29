@@ -86,7 +86,7 @@ def render_score_runs_view(
             df = df[df["model"].str.contains(model_filter, na=False)]
 
         if df.empty:
-            st.success(f"✅ {rater_id} has scored all runs matching current filters.")
+            st.success(f"{rater_id} has scored all runs matching current filters.")
             return
 
         # Format run labels for selectbox
@@ -96,7 +96,7 @@ def render_score_runs_view(
             scenario = str(row.get("scenario_id", ""))
             detail = str(row.get("detail_level", ""))
             fmt = str(row.get("prompt_format", ""))
-            scored = "✅" if row["run_id"] in already_scored else "⬜"
+            scored = "[scored]" if row["run_id"] in already_scored else "[unscored]"
             detail_badge = f" [{detail}]" if detail and detail != "—" else ""
             return f"{scored}  {short}…  {model}  ·  {scenario}{detail_badge}  ·  {fmt}"
 
@@ -155,7 +155,7 @@ def render_score_runs_view(
         st.session_state[rater_key] = rater_id
 
     # ── Three tabs ───────────────────────────────────────────────────────────
-    tab_score, tab_convo, tab_detail = st.tabs(["📊 Score", "💬 Conversation", "🔍 Details"])
+    tab_score, tab_convo, tab_detail = st.tabs(["Score", "Conversation", "Details"])
 
     with tab_score:
         render_run_scoring_ui(run_data, scoring_dir)

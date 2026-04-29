@@ -38,7 +38,7 @@ _SCENARIOS_DIR = Path("scenarios")
 
 
 def render_batch_run_view(logs_dir: Path = Path("logs")) -> None:
-    st.subheader("🧪 Run Experiments")
+    st.subheader(" Run Experiments")
     st.caption(
         "Run all selected scenarios × all selected models with one config. "
         "Each combo is judged by GPT-5.4 + Claude Sonnet (averaged, strict prompt). "
@@ -150,7 +150,7 @@ def render_batch_run_view(logs_dir: Path = Path("logs")) -> None:
             f"{n_scenarios} scenario(s) × {n_models} model(s) × {int(runs_per_combo)} repeat(s)  \n"
             f"Format: `{prompt_format}` · Turns: {int(max_turns)} · "
             f"Eval: `{eval_prompt}` · Judge: {judge_label}  \n"
-            f"⚡ **{max_workers} parallel** (est. {max(1, n_runs // max_workers)} batch(es) of {max_workers})"
+            f" **{max_workers} parallel** (est. {max(1, n_runs // max_workers)} batch(es) of {max_workers})"
         )
     else:
         st.warning("Select at least one scenario and one model.")
@@ -163,14 +163,14 @@ def render_batch_run_view(logs_dir: Path = Path("logs")) -> None:
     col_launch, col_stop = st.columns([3, 1])
     with col_launch:
         launch = st.button(
-            f"🚀 Launch {n_runs} run(s)",
+            f" Launch {n_runs} run(s)",
             type="primary",
             disabled=is_running or n_runs == 0,
             key="br_launch",
         )
     with col_stop:
         stop_pressed = st.button(
-            "⏹ Stop",
+            " Stop",
             disabled=not is_running,
             key="br_stop",
             type="secondary",
@@ -181,7 +181,7 @@ def render_batch_run_view(logs_dir: Path = Path("logs")) -> None:
         stop_evt = br_state.get("stop_event")
         if stop_evt is not None:
             stop_evt.set()
-            br_state["lines"].append("⏹ Stop requested — finishing current turns…")
+            br_state["lines"].append(" Stop requested — finishing current turns…")
         st.rerun()
 
     if launch and n_runs > 0:
@@ -221,22 +221,22 @@ def _render_progress() -> None:
         active_str = ", ".join(active_list[:3]) + ("…" if len(active_list) > 3 else "")
         total_submitted = br_state.get("total", 1)
         queued = total_submitted - completed - len(active_list)
-        queue_str = f"  |  ⏳ {queued} queued" if queued > 0 else ""
+        queue_str = f"  |   {queued} queued" if queued > 0 else ""
         st.progress(completed / total,
-                    text=f"▶ {completed}/{total} done  |  🔄 {active_str or 'starting…'}{queue_str}")
+                    text=f"▶ {completed}/{total} done  |   {active_str or 'starting…'}{queue_str}")
     elif br_state.get("stop_event") and br_state["stop_event"].is_set() and not is_running:
-        st.warning(f"⏹ Stopped after {completed}/{total} run(s). {len(errors)} error(s).")
+        st.warning(f" Stopped after {completed}/{total} run(s). {len(errors)} error(s).")
     elif errors:
         st.error(f"Completed with {len(errors)} error(s): see log below")
     else:
-        st.success(f"✅ All {completed} run(s) complete — synced to Supabase")
+        st.success(f" All {completed} run(s) complete — synced to Supabase")
 
     if lines:
         with st.expander("Run log", expanded=is_running):
             st.code("\n".join(lines[-60:]), language=None)
 
     if errors and not is_running:
-        with st.expander(f"⚠ {len(errors)} errors"):
+        with st.expander(f" {len(errors)} errors"):
             for e in errors:
                 st.error(e)
 
@@ -355,7 +355,7 @@ def _parallel_worker(
         # If provider is rate-limited (e.g. Mistral semaphore=1), log that we're queued
         if sem and sem._value == 0:  # already at capacity
             with lock:
-                state["lines"].append(f"⏳ [{label}] queued — waiting for {provider} rate-limit slot…")
+                state["lines"].append(f"[queue] [{label}] queued — waiting for {provider} rate-limit slot…")
 
         # Block until we have a slot for this provider
         if sem:
@@ -364,7 +364,7 @@ def _parallel_worker(
         # Now actually running
         with lock:
             state["active"].append(label)
-            state["lines"].append(f"▶ [{label}] starting…")
+            state["lines"].append(f"[start] [{label}]")
 
         try:
             _run_one_combo(
@@ -403,7 +403,7 @@ def _parallel_worker(
     state["active"] = []
     with lock:
         state["lines"].append(
-            f"\n✅ Done — {state['completed']}/{state['total']} runs, "
+            f"\n Done — {state['completed']}/{state['total']} runs, "
             f"{len(state['errors'])} error(s)"
         )
 
@@ -475,12 +475,12 @@ def _run_one_combo(
             builtins.print = _orig
 
         turns = run_data["metadata"]["total_turns"]
-        _log(f"✓ {turns} turns")
+        _log(f" {turns} turns")
 
         # Judge
         judge_models = [judge_a, judge_b] if dual_judge and judge_b else [judge_a]
         judge = LLMJudge(judge_models, eval_target="subject", prompt_name=eval_prompt)
-        _log("⚖ judging…")
+        _log(" judging…")
         result = judge.evaluate(run_data)
         run_data["scores"]["llm_judge"] = result
 
@@ -491,7 +491,7 @@ def _run_one_combo(
             if scores.get(m) is not None
         )
         _log(
-            f"📊 IC={scores.get('identity_consistency','?')} "
+            f"IC={scores.get('identity_consistency','?')} "
             f"CA={scores.get('cultural_authenticity','?')} "
             f"N={scores.get('naturalness','?')} "
             f"IY={scores.get('information_yield','?')} "
@@ -505,11 +505,11 @@ def _run_one_combo(
             store = get_store()
             if store.available:
                 store.save_run(run_data)
-                _log("☁ synced")
+                _log(" synced")
         except Exception:
             pass
 
     except Exception as e:
-        _log(f"✗ FAILED: {str(e)[:100]}")
+        _log(f" FAILED: {str(e)[:100]}")
         with lock:
             state["errors"].append(f"{label}: {str(e)[:100]}")

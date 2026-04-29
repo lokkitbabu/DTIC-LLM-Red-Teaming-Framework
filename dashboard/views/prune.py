@@ -11,7 +11,7 @@ import streamlit as st
 
 
 def render_prune_view(run_index: pd.DataFrame, logs_dir: Path = Path("logs")) -> None:
-    st.subheader("🗑 Prune Runs")
+    st.subheader(" Prune Runs")
 
     if run_index.empty:
         st.info("No runs to prune.")
@@ -95,7 +95,7 @@ def render_prune_view(run_index: pd.DataFrame, logs_dir: Path = Path("logs")) ->
 
     # ── Confirm + delete ─────────────────────────────────────────────────────
     if st.button(
-        f"🗑 Delete {len(selected_ids)} run(s)",
+        f" Delete {len(selected_ids)} run(s)",
         type="primary",
         key="prune_confirm_delete",
     ):
@@ -141,7 +141,7 @@ def _delete_runs(run_ids: list[str], logs_dir: Path) -> None:
     progress.empty()
     st.cache_data.clear()
 
-    lines = [f"✅ Deleted {len(run_ids)} run(s)"]
+    lines = [f" Deleted {len(run_ids)} run(s)"]
     if local_deleted:
         lines.append(f"  · {local_deleted} local file(s) removed")
     if local_missing:

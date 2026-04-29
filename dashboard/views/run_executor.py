@@ -164,11 +164,11 @@ def _worker(
 
         total = run_data["metadata"]["total_turns"]
         run_state["turn_current"] = total
-        run_state["lines"].append(f"✓ Conversation complete — {total} turns")
+        run_state["lines"].append(f" Conversation complete — {total} turns")
 
         if judge_model_str:
             run_state["phase"] = "judging"
-            run_state["lines"].append(f"⚖ Judging with {judge_model_str.split(':')[-1]}…")
+            run_state["lines"].append(f"Judging with {judge_model_str.split(':')[-1]}…")
             judge_model = _build_model(judge_model_str)
             from evaluation.llm_judge import LLMJudge
             judge = LLMJudge(judge_model, eval_target="subject", prompt_name="strict")
@@ -182,7 +182,7 @@ def _worker(
         log_path = save_run(run_data)
         run_state["result_path"] = str(log_path)
         run_state["run_id"] = run_data["run_id"]
-        run_state["lines"].append(f"💾 Saved: {log_path}")
+        run_state["lines"].append(f" Saved: {log_path}")
 
         run_state["phase"] = "syncing"
         try:
@@ -191,7 +191,7 @@ def _worker(
             if store.available:
                 store.save_run(run_data)
                 run_state["synced"] = True
-                run_state["lines"].append("☁ Synced to Supabase — visible in dashboard")
+                run_state["lines"].append(" Synced to Supabase — visible in dashboard")
             else:
                 run_state["lines"].append("  (Supabase not configured — local only)")
         except Exception as e:
@@ -201,7 +201,7 @@ def _worker(
 
     except Exception as exc:
         run_state["error"] = str(exc)
-        run_state["lines"].append(f"✗ Error: {exc}")
+        run_state["lines"].append(f" Error: {exc}")
     finally:
         run_state["running"] = False
 
@@ -308,7 +308,7 @@ def render_run_executor() -> None:
 
     if run_mode == "All 3 formats × 3 runs":
         total_planned = 9
-        btn_label = f"🚀 Launch batch (9 runs — current model × all formats)"
+        btn_label = f" Launch batch (9 runs — current model × all formats)"
     else:
         total_planned = 1
         btn_label = "▶ Run"
@@ -317,12 +317,12 @@ def render_run_executor() -> None:
     with col_l:
         launch = st.button(btn_label, type="primary", disabled=is_running, key="re_launch", use_container_width=True)
     with col_s:
-        if st.button("⏹ Stop", disabled=not is_running, key="re_stop"):
+        if st.button(" Stop", disabled=not is_running, key="re_stop"):
             rs = st.session_state.get("run_state", {})
             stop_evt = rs.get("stop_event")
             if stop_evt is not None:
                 stop_evt.set()
-                rs["lines"].append("⏹ Stop requested — finishing current turn…")
+                rs["lines"].append(" Stop requested — finishing current turn…")
             st.rerun()
 
     if launch:
@@ -396,7 +396,7 @@ def _start_batch(scenario_path, subject, interviewer, judge, max_turns):
                 state["running"] = True  # keep running flag true between runs
         state["running"] = False
         state["phase"] = "done"
-        state["lines"].append(f"\n✓ Batch complete — {completed} runs")
+        state["lines"].append(f"\n Batch complete — {completed} runs")
 
     t = threading.Thread(target=_batch_worker, daemon=True)
     t.start()
@@ -413,11 +413,11 @@ def _render_status(run_state: RunState) -> None:
 
     # Phase indicator
     phase_icons = {
-        "starting": "⏳", "conversation": "💬", "judging": "⚖",
-        "saving": "💾", "syncing": "☁", "done": "✅",
+        "starting": "", "conversation": "", "judging": "",
+        "saving": "", "syncing": "", "done": "[scored]",
     }
     if is_running or phase not in ("done", ""):
-        icon = phase_icons.get(phase, "⏳")
+        icon = phase_icons.get(phase, "")
         phase_label = phase.title() if phase else "Starting"
         if is_running:
             st.markdown(f"**{icon} {phase_label}…**")
@@ -425,7 +425,7 @@ def _render_status(run_state: RunState) -> None:
             st.error(f"Run failed: {error}")
         else:
             synced = run_state.get("synced", False)
-            st.success(f"✅ Complete {'— synced to Supabase ☁' if synced else '— local only'}")
+            st.success(f" Complete {'— synced to Supabase ' if synced else '— local only'}")
 
     # Turn progress bar (only during conversation phase)
     if phase == "conversation" and is_running:

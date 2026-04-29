@@ -61,12 +61,12 @@ def render_run_scoring_ui(run_data: dict, scoring_dir: Path, key_suffix: str = "
         st.markdown("<br>", unsafe_allow_html=True)
         if existing:
             prev_total = _safe_int(existing.get("total"), 0)
-            st.success(f"✅ Already scored by **{rater_id}** — {prev_total}/20. Values pre-loaded.")
+            st.success(f"Already scored by **{rater_id}** — {prev_total}/20. Values pre-loaded.")
         elif rater_id:
             st.info("No score yet for this rater. Score and save below.")
 
     # ── Tabs: Score | Tags ───────────────────────────────────────────────────
-    tab_score, tab_tags = st.tabs(["📊 Score", "🏷️ Tags"])
+    tab_score, tab_tags = st.tabs(["Score", "Tags"])
 
     with tab_score:
         _render_score_form(run_id, run_data, rater_id, existing, writer, scoring_dir, key_suffix)
@@ -89,13 +89,13 @@ def _render_score_form(
     key_suffix: str = "",
 ) -> None:
     # Conversation preview
-    with st.expander("📋 Conversation preview (last 8 turns)", expanded=False):
+    with st.expander("Conversation preview (last 8 turns)", expanded=False):
         conversation = run_data.get("conversation", [])
         if not conversation:
             st.caption("No turns recorded.")
         for turn in conversation[-8:]:
             speaker = turn.get("speaker", "?")
-            icon = "🤖" if speaker == "subject" else "🎙️"
+            icon = "[LLM]" if speaker == "subject" else "[INT]"
             text = turn.get("text", "")
             st.markdown(
                 f"**{icon} Turn {turn.get('turn')} — {speaker.title()}:** "
@@ -107,7 +107,7 @@ def _render_score_form(
     # LLM judge scores for reference
     llm_scores = _get_llm_scores(run_data)
     if llm_scores:
-        with st.expander("🤖 LLM judge scores (for reference)", expanded=False):
+        with st.expander("LLM judge scores (for reference)", expanded=False):
             cols = st.columns(4)
             for i, m in enumerate(_METRICS):
                 v = llm_scores.get(m)
@@ -158,7 +158,7 @@ def _render_score_form(
 
     col_save, col_clear = st.columns([2, 1])
     with col_save:
-        if st.button("💾 Save score", type="primary", key=f"save_run_score_{run_id}{key_suffix}", disabled=not rater_id):
+        if st.button("Save score", type="primary", key=f"save_run_score_{run_id}{key_suffix}", disabled=not rater_id):
             if not rater_id:
                 st.error("Select a rater ID first.")
                 return
@@ -170,7 +170,7 @@ def _render_score_form(
                 "notes": notes,
             }
             writer.save_run_score(run_data=run_data, score=entry, rater_id=rater_id, scoring_dir=scoring_dir)
-            st.success(f"✅ Saved — {rater_id} / {total}/20")
+            st.success(f"Saved: {rater_id} / {total}/20")
             st.cache_data.clear()
 
     # All raters scores table
@@ -220,7 +220,7 @@ def _render_tag_manager(run_id: str, rater_id: str, key_suffix: str = "") -> Non
         tag_cols = st.columns(min(len(current_tags), 5))
         for i, tag in enumerate(current_tags):
             with tag_cols[i % 5]:
-                if st.button(f"✕  {tag}", key=f"rm_tag_{run_id}_{tag}{key_suffix}"):
+                if st.button(f"[x] {tag}", key=f"rm_tag_{run_id}_{tag}{key_suffix}"):
                     if supa_ok:
                         store.remove_tag(run_id, tag)
                     else:
@@ -238,7 +238,7 @@ def _render_tag_manager(run_id: str, rater_id: str, key_suffix: str = "") -> Non
     for i, tag in enumerate(_PRESET_TAGS):
         already = tag in current_tags
         with preset_cols[i % 5]:
-            btn_label = f"✓ {tag}" if already else f"+ {tag}"
+            btn_label = f"[on] {tag}" if already else f"[+] {tag}"
             if st.button(btn_label, key=f"preset_{run_id}_{tag}{key_suffix}", disabled=already):
                 if supa_ok:
                     store.add_tag(run_id, tag, created_by=rater_id or "")
@@ -274,7 +274,7 @@ def _render_tag_manager(run_id: str, rater_id: str, key_suffix: str = "") -> Non
             st.rerun()
 
     if not supa_ok:
-        st.caption("⚠ Supabase not configured — tags stored in session only (lost on refresh).")
+        st.caption("Warning: Supabase not configured — tags stored in session only (lost on refresh).")
 
 
 # ---------------------------------------------------------------------------

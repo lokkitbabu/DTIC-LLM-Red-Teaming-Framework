@@ -42,7 +42,7 @@ def render_results_view(run_index: pd.DataFrame, scoring_dir: Path, planned_runs
         valid_run_ids = set(run_index["run_id"].tolist())
         run_scores_df = run_scores_df[run_scores_df["run_id"].isin(valid_run_ids)]
     if not run_scores_df.empty:
-        st.info(f"📊 {len(run_scores_df)} run-level scores from {run_scores_df['rater_id'].nunique()} rater(s)")
+        st.info(f"{len(run_scores_df)} run-level scores from {run_scores_df['rater_id'].nunique()} rater(s)")
 
     if run_index.empty:
         st.info("No run data yet. Execute batch runs to populate this page.")
@@ -73,9 +73,9 @@ def _render_leaderboard(run_index: pd.DataFrame, run_scores_df: pd.DataFrame) ->
     """Leaderboard using combined scores from run_index (group_llm_avg + human)/2 weighting."""
     _ds = st.session_state.get("sidebar_dataset", "All")
     _ds_badge = {
-        "Fidelity Ablation (full/medium/bare)": "🔬 Fidelity Ablation (full/medium/bare)",
-        "Probe Scenario": "🎯 Probe Scenario",
-        "All": "📊 All Scenarios",
+        "Fidelity Ablation (full/medium/bare)": "Fidelity Ablation (full/medium/bare)",
+        "Probe Scenario": "Probe Scenario",
+        "All": "All Scenarios",
     }.get(_ds, _ds)
     st.markdown(f"### Leaderboard — {_ds_badge}")
 
@@ -133,10 +133,10 @@ def _render_leaderboard(run_index: pd.DataFrame, run_scores_df: pd.DataFrame) ->
     # Source label per model
     def _src(row):
         if row["N Human Scores"] > 0 and row["N LLM Runs"] > 0:
-            return "✅ Combined"
+            return " Combined"
         elif row["N Human Scores"] > 0:
-            return "👤 Human only"
-        return "🤖 LLM only"
+            return " Human only"
+        return " LLM only"
     agg["Score Source"] = agg.apply(_src, axis=1)
 
     agg = agg.sort_values("Total", ascending=False).reset_index(drop=True)

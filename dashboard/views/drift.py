@@ -94,7 +94,7 @@ def render_drift_analysis(run_data: dict, logs_dir: Path) -> None:
     with col2:
         st.markdown("<br>", unsafe_allow_html=True)
         run_analysis = st.button(
-            "🔍 Analyze" if not existing else "🔄 Re-analyze",
+            "Analyze" if not existing else "Re-analyze",
             key=f"drift_run_{run_data.get('run_id')}",
         )
 
@@ -227,7 +227,7 @@ def _render_drift_results(run_data: dict, analysis: dict) -> None:
         text = turn.get("text", "")
 
         if speaker != "subject":
-            with st.expander(f"🎙️ Interviewer — Turn {turn_num}", expanded=False):
+            with st.expander(f"Interviewer — Turn {turn_num}", expanded=False):
                 st.caption(text)
             continue
 
@@ -249,7 +249,7 @@ def _render_drift_results(run_data: dict, analysis: dict) -> None:
                 unsafe_allow_html=True,
             )
         else:
-            with st.expander(f"✅ Subject — Turn {turn_num}", expanded=False):
+            with st.expander(f"Subject — Turn {turn_num}", expanded=False):
                 st.write(text)
 
     st.markdown("---")

@@ -42,7 +42,7 @@ def _state() -> dict:
 
 
 def render_live_chat_view(logs_dir: Path = Path("logs")) -> None:
-    st.subheader("🧑‍💻 Live Chat")
+    st.subheader("Live Chat")
     st.caption(
         "You play the interviewer. The LLM responds in-character as the scenario persona. "
         "Probe a model manually before running automated batches."
@@ -95,7 +95,7 @@ def _render_setup(lc: dict, logs_dir: Path) -> None:
             horizontal=True,
         )
 
-        submitted = st.form_submit_button("▶ Start session", type="primary")
+        submitted = st.form_submit_button("Start session", type="primary")
 
     if submitted:
         model_str = custom_model.strip() if custom_model.strip() else _MODEL_PRESETS[model_choice]
@@ -127,7 +127,7 @@ def _render_setup(lc: dict, logs_dir: Path) -> None:
 def _render_scenario_preview(scenario_map: dict) -> None:
     if not scenario_map:
         return
-    with st.expander("📖 Scenario previews", expanded=False):
+    with st.expander("Scenario previews", expanded=False):
         for stem, path in list(scenario_map.items())[:4]:
             try:
                 d = json.loads(path.read_text())
@@ -167,7 +167,7 @@ def _render_chat(lc: dict, logs_dir: Path) -> None:
             f"`{scenario.get('scenario_id','?')}`"
         )
     with col_end:
-        if st.button("⏹ End", key="lc_end"):
+        if st.button("End session", key="lc_end"):
             _end_session(lc, logs_dir)
             st.rerun()
 
@@ -189,7 +189,7 @@ def _render_chat(lc: dict, logs_dir: Path) -> None:
         )
     with col_btn:
         st.markdown("<br>", unsafe_allow_html=True)
-        send = st.button("Send ➤", type="primary", key="lc_send_btn", use_container_width=True)
+        send = st.button("Send", type="primary", key="lc_send_btn", use_container_width=True)
 
     if send and user_input.strip():
         _do_send(lc, user_input.strip())
@@ -214,12 +214,12 @@ def _render_chat(lc: dict, logs_dir: Path) -> None:
         st.markdown("---")
         c1, c2 = st.columns([2, 1])
         with c1:
-            if st.button("💾 Save as run log", key="lc_save"):
+            if st.button("Save as run log", key="lc_save"):
                 path = _save_run(lc, logs_dir)
                 st.success(f"Saved: `{path}`")
                 st.cache_data.clear()
         with c2:
-            if st.button("🗑 Clear", key="lc_clear"):
+            if st.button("Clear", key="lc_clear"):
                 lc["messages"] = []
                 st.rerun()
 

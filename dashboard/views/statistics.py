@@ -184,7 +184,7 @@ def render_statistics_view(
     with col_csv:
         csv_bytes = display_df.to_csv(index=False).encode()
         st.download_button(
-            "⬇ Download CSV",
+            "Download CSV",
             data=csv_bytes,
             file_name="dtic_results_table.csv",
             mime="text/csv",
@@ -192,7 +192,7 @@ def render_statistics_view(
         )
 
     with col_latex:
-        if st.button("📋 Copy LaTeX table", key="stats_latex"):
+        if st.button("Copy LaTeX table", key="stats_latex"):
             latex = _to_latex(display_df, group_by)
             st.code(latex, language="latex")
 

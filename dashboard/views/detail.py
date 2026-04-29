@@ -70,14 +70,14 @@ def _render_pdf_download(run_data: dict, manual_scores: pd.DataFrame) -> None:
     """Render a white paper PDF download button below the transcript."""
     st.markdown("---")
     st.markdown("#### Export Transcript")
-    if st.button("📄 Generate PDF", key=f"pdf_{run_data.get('run_id')}"):
+    if st.button("Generate PDF", key=f"pdf_{run_data.get('run_id')}"):
         with st.spinner("Building PDF…"):
             try:
                 from dashboard.export_pdf import build_run_pdf
                 pdf_bytes = build_run_pdf(run_data, manual_scores if not manual_scores.empty else None)
                 run_id = run_data.get("run_id", "run")
                 st.download_button(
-                    label="⬇️ Download PDF",
+                    label="Download PDF",
                     data=pdf_bytes,
                     file_name=f"{run_id}_transcript.pdf",
                     mime="application/pdf",
@@ -162,7 +162,7 @@ def _render_overview(run_data: dict, manual_scores: pd.DataFrame, logs_dir: Path
     # Flag toggle (Requirements 24.1, 24.2)
     fm = FlagManager()
     is_flagged = fm.is_flagged(run_id)
-    flag_label = "🚩 Unflag this run" if is_flagged else "Flag this run"
+    flag_label = "Unflag this run" if is_flagged else "Flag this run"
     if st.button(flag_label, key=f"flag_toggle_{run_id}"):
         fm.toggle_flag(run_id)
         st.rerun()
