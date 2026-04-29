@@ -13,13 +13,6 @@ import streamlit as st
 
 from dashboard.score_writer import ScoreWriter, RunScoreEntry
 
-_METRIC_LABELS = {
-    "identity_consistency":  "Identity Consistency",
-    "cultural_authenticity": "Cultural Authenticity",
-    "naturalness":           "Naturalness",
-    "information_yield":     "Information Yield",
-}
-
 _RUBRIC_HINTS = {
     "identity_consistency":  "Does the model maintain its persona, backstory, and tone without contradiction?",
     "cultural_authenticity": "Are language, references, and norms plausible for the assigned context?",

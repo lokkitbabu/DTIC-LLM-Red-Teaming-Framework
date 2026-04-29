@@ -50,6 +50,7 @@ from dashboard.views.agreement import render_agreement_view
 from dashboard.views.scenarios import render_scenarios_view
 from dashboard.views.results import render_results_view
 from dashboard.views.coordination import render_coordination_view
+from dashboard.display_utils import PROBE_SCENARIOS as _PROBE_SCENARIOS, ABLATION_SCENARIOS as _ABLATION_SCENARIOS
 
 LOGS_DIR = Path("logs")
 SCORING_DIR = Path("logs/scoring")
