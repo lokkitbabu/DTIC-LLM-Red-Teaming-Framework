@@ -7,18 +7,13 @@ a batch re-score expander, and a run count summary table.
 """
 
 from pathlib import Path
+from dashboard.display_utils import METRICS, METRIC_LABELS_FULL, shorten_model
 
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
-METRIC_LABELS = {
-    "identity_consistency": "Identity Consistency",
-    "cultural_authenticity": "Cultural Authenticity",
-    "naturalness": "Naturalness",
-    "information_yield": "Information Yield",
-}
 
 
 def _png_download_button(fig: go.Figure, filename: str) -> None:
@@ -84,7 +79,7 @@ def _render_score_histograms(run_index: pd.DataFrame) -> None:
         with col:
             metric_data = run_index[["model", metric]].dropna(subset=[metric])
             if metric_data.empty:
-                st.caption(f"No data for {METRIC_LABELS[metric]}")
+                st.caption(f"No data for {METRIC_LABELS_FULL[metric]}")
                 continue
 
             fig = px.histogram(
@@ -93,7 +88,7 @@ def _render_score_histograms(run_index: pd.DataFrame) -> None:
                 color="model",
                 barmode="overlay",
                 nbins=10,
-                title=METRIC_LABELS[metric],
+                title=METRIC_LABELS_FULL[metric],
                 labels={metric: "Score", "model": "Model"},
                 opacity=0.75,
             )
@@ -161,7 +156,7 @@ def _render_model_bar_chart(run_index: pd.DataFrame) -> None:
         error_visible = [v is not None for v in error_y_values]
 
         fig.add_trace(go.Bar(
-            name=METRIC_LABELS[metric],
+            name=METRIC_LABELS_FULL[metric],
             x=stats["model"].tolist(),
             y=stats[mean_col].tolist(),
             marker_color=colors[i % len(colors)],
@@ -210,7 +205,7 @@ def _render_scenario_bar_chart(run_index: pd.DataFrame) -> None:
         error_array = [v if v is not None else 0.0 for v in error_y_values]
 
         fig.add_trace(go.Bar(
-            name=METRIC_LABELS[metric],
+            name=METRIC_LABELS_FULL[metric],
             x=stats["scenario_id"].tolist(),
             y=stats[mean_col].tolist(),
             marker_color=colors[i % len(colors)],
@@ -253,7 +248,7 @@ def _render_radar_chart(run_index: pd.DataFrame) -> None:
         st.info("No score data available for radar chart.")
         return
 
-    labels = [METRIC_LABELS[m] for m in available_metrics]
+    labels = [METRIC_LABELS_FULL[m] for m in available_metrics]
     # Close the polygon by repeating the first label
     theta = labels + [labels[0]]
 
@@ -541,7 +536,7 @@ def _render_prompt_format_comparison(run_index: pd.DataFrame) -> None:
     colors = px.colors.qualitative.Pastel
     for i, metric in enumerate(available):
         fig.add_trace(go.Bar(
-            name=METRIC_LABELS[metric],
+            name=METRIC_LABELS_FULL[metric],
             x=stats["prompt_format"],
             y=stats[metric].round(2),
             marker_color=colors[i % len(colors)],

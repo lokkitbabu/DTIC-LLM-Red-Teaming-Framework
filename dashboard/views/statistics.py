@@ -64,22 +64,6 @@ def _compute_ci(values: pd.Series) -> tuple[float, float]:
 
 
 
-_MODEL_NAMES = {
-    'meta-llama/Llama-3.3-70B-Instruct-Turbo': 'Llama 3.3 70B',
-    'deepseek-ai/DeepSeek-V3.1': 'DeepSeek V3.1',
-    'mistral-large-latest': 'Mistral Large 3',
-    'claude-sonnet-4-6': 'Claude Sonnet 4.6',
-    'gpt-5.4': 'GPT-5.4',
-    'grok-4.20-0309-non-reasoning': 'Grok 4.20',
-}
-
-def _shorten_model(m: str) -> str:
-    model_id = m.split(':')[-1] if ':' in m else m
-    direct = _MODEL_NAMES.get(model_id)
-    if direct:
-        return direct
-    model_id2 = model_id.split('/')[-1].split('(model=')[-1].rstrip(')')
-    return _MODEL_NAMES.get(model_id2, model_id2[:28])
 
 def render_statistics_view(
     run_index: pd.DataFrame,

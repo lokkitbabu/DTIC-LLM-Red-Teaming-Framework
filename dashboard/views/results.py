@@ -84,7 +84,7 @@ def _render_leaderboard(run_index: pd.DataFrame, run_scores_df: pd.DataFrame) ->
         return
 
     ri = run_index.copy()
-    ri["model"] = ri["model"].apply(_shorten)
+    ri["model"] = ri["model"].apply(shorten_model)
 
     # Determine score source for each row:
     # - combined metric column (run_index[metric]) = (group_llm_avg + human)/2 if human exists, else llm only
@@ -108,7 +108,7 @@ def _render_leaderboard(run_index: pd.DataFrame, run_scores_df: pd.DataFrame) ->
     human_counts = pd.Series(dtype=int)
     if not run_scores_df.empty and "model" in run_scores_df.columns:
         rs = run_scores_df.copy()
-        rs["model"] = rs["model"].apply(_shorten)
+        rs["model"] = rs["model"].apply(shorten_model)
         human_counts = rs.groupby("model").size().rename("N Human Scores")
 
     # Whether any human scores contributed
