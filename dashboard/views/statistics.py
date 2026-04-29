@@ -358,15 +358,37 @@ def _build_score_df(
     if len(frames) == 1:
         return frames[0]
 
-    # Average both sources together
-    combined = pd.concat(frames)
-    group_cols = [c for c in available_meta if c in combined.columns]
-    numeric = [m for m in _METRICS if m in combined.columns]
-    return (
-        combined.groupby(group_cols)[numeric]
-        .apply(lambda g: g.apply(pd.to_numeric, errors="coerce").mean())
-        .reset_index()
-    )
+    # Weighted combine: group LLM avg (all runs per model×scenario×format) = 1 human score
+    llm_frame = frames[0] if "LLM" in source or "Both" in source else pd.DataFrame()
+    human_frame = frames[-1] if "Human" in source or "Both" in source else pd.DataFrame()
+
+    if llm_frame.empty:
+        return human_frame
+    if human_frame.empty:
+        return llm_frame
+
+    # Compute group LLM averages
+    group_cols = [c for c in available_meta if c in llm_frame.columns]
+    numeric = [m for m in _METRICS if m in llm_frame.columns]
+
+    llm_group = llm_frame.groupby(group_cols)[numeric].mean().reset_index()
+
+    # human_frame is already averaged across raters per run_id
+    # average down to group level too
+    human_group = human_frame.groupby(group_cols)[numeric].mean().reset_index() if group_cols else human_frame
+
+    merged = llm_group.merge(human_group, on=group_cols, suffixes=("_llm", "_human"), how="outer")
+    for m in numeric:
+        llm_col, human_col = f"{m}_llm", f"{m}_human"
+        if llm_col in merged.columns and human_col in merged.columns:
+            merged[m] = merged.apply(
+                lambda r: (r[llm_col] + r[human_col]) / 2.0
+                if pd.notna(r[llm_col]) and pd.notna(r[human_col])
+                else (r[human_col] if pd.notna(r[human_col]) else r[llm_col]),
+                axis=1,
+            )
+            merged = merged.drop(columns=[llm_col, human_col])
+    return merged
 
 
 def _to_latex(df: pd.DataFrame, group_by: list[str]) -> str:

@@ -169,15 +169,43 @@ class DataLoader:
                 run_score_avgs[str(rid)] = avgs
 
         records = []
+        # Build group key: model × scenario_id × prompt_format
+        # Human raters score once per group; LLM scores once per run.
+        # Weighted combine: group_llm_avg and human_score count equally (50/50).
+        from collections import defaultdict
+        group_llm: dict[tuple, dict[str, list]] = defaultdict(lambda: {m: [] for m in METRICS})
+        for r in meta_rows:
+            key = (r.get("model",""), r.get("scenario_id",""), r.get("prompt_format","flat"))
+            for m in METRICS:
+                v = r.get(f"llm_{m}")
+                if v is not None:
+                    try:
+                        group_llm[key][m].append(float(v))
+                    except (TypeError, ValueError):
+                        pass
+
         for r in meta_rows:
             run_id = r["run_id"]
             llm_scores = {m: r.get(f"llm_{m}") for m in METRICS}
             manual_scores = run_score_avgs.get(run_id, {m: None for m in METRICS})
+            key = (r.get("model",""), r.get("scenario_id",""), r.get("prompt_format","flat"))
 
             combined: dict[str, Optional[float]] = {}
             for metric in METRICS:
-                vals = [v for v in (llm_scores.get(metric), manual_scores.get(metric)) if v is not None]
-                combined[metric] = float(sum(vals) / len(vals)) if vals else None
+                # Group LLM average = avg across all runs for this model/scenario/format
+                llm_vals = group_llm[key][metric]
+                group_llm_avg = float(sum(llm_vals) / len(llm_vals)) if llm_vals else None
+                human = manual_scores.get(metric)
+
+                if group_llm_avg is not None and human is not None:
+                    # 50/50: group LLM avg counts same as 1 human score
+                    combined[metric] = (group_llm_avg + float(human)) / 2.0
+                elif human is not None:
+                    combined[metric] = float(human)
+                elif group_llm_avg is not None:
+                    combined[metric] = group_llm_avg
+                else:
+                    combined[metric] = None
 
             record = {
                 "run_id": run_id,
@@ -200,8 +228,31 @@ class DataLoader:
         if not records:
             return self._empty_index()
 
+        # Recompute combined: group LLM avg counts equal to 1 human score
+        from collections import defaultdict as _dd2
+        _g: dict = _dd2(lambda: {m: [] for m in METRICS})
+        for rec in records:
+            _k = (rec.get('model',''), rec.get('scenario_id',''), rec.get('prompt_format','flat'))
+            for m in METRICS:
+                v = rec.get(f'llm_{m}')
+                if v is not None:
+                    try: _g[_k][m].append(float(v))
+                    except: pass
+        for rec in records:
+            _k = (rec.get('model',''), rec.get('scenario_id',''), rec.get('prompt_format','flat'))
+            for metric in METRICS:
+                llm_vals = _g[_k][metric]
+                gavg = float(sum(llm_vals)/len(llm_vals)) if llm_vals else None
+                human = rec.get(f'manual_{metric}')
+                if gavg is not None and human is not None:
+                    rec[metric] = (gavg + float(human)) / 2.0
+                elif human is not None:
+                    rec[metric] = float(human)
+                else:
+                    rec[metric] = gavg
+
         df = pd.DataFrame(records)
-        df = df.sort_values("timestamp", ascending=True).reset_index(drop=True)
+        df = df.sort_values('timestamp', ascending=True).reset_index(drop=True)
         return df
 
     def _build_from_local(self, logs_dir: Path) -> pd.DataFrame:
@@ -321,6 +372,7 @@ class DataLoader:
 
             combined: dict[str, Optional[float]] = {}
             for metric in METRICS:
+                # Will be recalculated with group avg after all records built
                 vals = [v for v in (llm_scores.get(metric), manual_scores.get(metric)) if v is not None]
                 combined[metric] = float(sum(vals) / len(vals)) if vals else None
 
