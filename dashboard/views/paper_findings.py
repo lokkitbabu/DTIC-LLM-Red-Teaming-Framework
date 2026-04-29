@@ -82,7 +82,7 @@ def _load_judge_scores() -> pd.DataFrame:
         return pd.DataFrame()
 
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=30)
 def _load_human_scores() -> pd.DataFrame:
     try:
         from dashboard.supabase_store import get_store
@@ -226,10 +226,17 @@ def render_paper_findings() -> None:
     # ── Section 5: LLM judge vs human ────────────────────────────────────────
     st.markdown("---")
     st.markdown("## 5 · LLM Judge vs Human Rater")
-    if not human_probe.empty:
-        _render_llm_vs_human(probe_grok, human_probe)
+    
+    # Use all human scores; show probe if available, else all ablation scores
+    if not human_df.empty:
+        human_for_plot = human_probe if not human_probe.empty else human_df
+        scenario_label = "probe scenario" if not human_probe.empty else "all scenarios"
+        st.caption(f"Human scores from: {scenario_label} ({len(human_for_plot)} scores from {human_for_plot['rater_id'].nunique() if 'rater_id' in human_for_plot.columns else '?'} raters)")
+        # Use same judge data — Grok probe or fallback to all ablation
+        judge_for_plot = probe_grok if not probe_grok.empty else ablation_grok
+        _render_llm_vs_human(judge_for_plot, human_for_plot)
     else:
-        st.info("No human scores for probe scenario yet.")
+        st.info("No human scores found in Supabase. Score some runs in the Score Runs page.")
 
     # ── Section 6: Failure modes ──────────────────────────────────────────────
     st.markdown("---")
