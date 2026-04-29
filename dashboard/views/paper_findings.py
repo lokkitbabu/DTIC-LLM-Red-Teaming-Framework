@@ -106,7 +106,7 @@ def _load_human_scores() -> pd.DataFrame:
             model_id = raw.split(":")[-1] if ":" in raw else raw
             return MODEL_SHORT.get(model_id, model_id.split("/")[-1].split("(model=")[-1].rstrip(")")[:24])
         merged["model"] = merged["subject_model"].apply(_clean)
-        for m in _METRICS + ["total"]:
+        for m in ["identity_consistency","cultural_authenticity","naturalness","information_yield","total"]:
             if m in merged.columns:
                 merged[m] = pd.to_numeric(merged[m], errors="coerce")
         return merged
