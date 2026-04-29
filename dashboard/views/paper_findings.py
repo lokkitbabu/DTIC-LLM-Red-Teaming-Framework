@@ -130,7 +130,7 @@ def _mean_ci(vals: pd.Series) -> tuple[float, float]:
 # Main view
 # ---------------------------------------------------------------------------
 
-def render_paper_findings() -> None:
+def render_paper_findings(dataset: str = "All") -> None:
     st.subheader("📄 Paper Findings")
     _ds = st.session_state.get("sidebar_dataset", "All")
     if _ds == "Probe Scenario":
@@ -152,13 +152,17 @@ def render_paper_findings() -> None:
         st.warning("No judge scores loaded. Ensure Supabase is connected.")
         return
 
-    # Split datasets
+    # Split datasets — always keep probe and ablation separate
     probe = df[df["scenario_id"] == "terrorism_recruitment_probe"].copy()
     ablation = df[df["scenario_id"].isin([
         "terrorism_recruitment_full",
         "terrorism_recruitment_medium",
         "terrorism_recruitment_bare"
     ])].copy()
+
+    # If a specific dataset is selected, grey out the other section
+    _show_probe = dataset in ("Probe Scenario", "All")
+    _show_ablation = dataset in ("Fidelity Ablation (full/medium/bare)", "All")
 
     # Filter to Grok strict for ablation (consistent judge)
     # Prefer Grok strict for ablation — fall back to any available judge scores
@@ -210,16 +214,25 @@ def render_paper_findings() -> None:
     tab_probe, tab_ablation_all = st.tabs(["Probe Scenario", "Fidelity Ablation"])
 
     with tab_probe:
-        _render_model_profiles(probe_grok, "Probe — Grok Judge Strict (terrorism_recruitment_probe)")
+        if _show_probe:
+            _render_model_profiles(probe_grok, "Probe — Grok Judge Strict (terrorism_recruitment_probe)")
+        else:
+            st.info("Switch dataset to 'Probe Scenario' or 'All' to see this section.")
 
     with tab_ablation_all:
-        _render_model_profiles(ablation_grok, "Fidelity Ablation — Grok Judge Strict (all 3 levels combined)")
+        if _show_ablation:
+            _render_model_profiles(ablation_grok, "Fidelity Ablation — Grok Judge Strict (all 3 levels combined)")
+        else:
+            st.info("Switch dataset to 'Fidelity Ablation' or 'All' to see this section.")
 
     # ── Section 3: Fidelity effect ────────────────────────────────────────────
     st.markdown("---")
     st.markdown("## 3 · Fidelity Effect: Full → Medium → Bare")
     st.caption("Does more persona detail in the system prompt improve performance?")
-    _render_fidelity_chart(ablation_grok)
+    if _show_ablation:
+        _render_fidelity_chart(ablation_grok)
+    else:
+        st.info("Fidelity analysis only available when dataset includes ablation scenarios.")
 
     # ── Section 4: Judge divergence ───────────────────────────────────────────
     st.markdown("---")

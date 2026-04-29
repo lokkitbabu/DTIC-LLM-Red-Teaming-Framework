@@ -310,21 +310,43 @@ if _selected_tags:
 # Page routing
 # ---------------------------------------------------------------------------
 
+
+# ---------------------------------------------------------------------------
+# Dataset context — shared across all pages
+# ---------------------------------------------------------------------------
+_PROBE_SCENARIOS = ['terrorism_recruitment_probe']
+_ABLATION_SCENARIOS = ['terrorism_recruitment_full','terrorism_recruitment_medium','terrorism_recruitment_bare']
+
+def _dataset_banner():
+    """Render a consistent dataset context badge at the top of every page."""
+    ds = st.session_state.get('sidebar_dataset', 'All')
+    if ds == 'Fidelity Ablation (full/medium/bare)':
+        st.info('🔬 **Dataset: Fidelity Ablation** — showing full / medium / bare scenarios only', icon=None)
+    elif ds == 'Probe Scenario':
+        st.info('🎯 **Dataset: Probe Scenario** — showing terrorism_recruitment_probe only', icon=None)
+    # No banner for All — keeps UI clean
+
 if page == "Results":
+    _dataset_banner()
     _default_planned = max(30, len(run_index)) if not run_index.empty else 30
     planned = st.sidebar.number_input("Planned runs", min_value=1, value=_default_planned, step=1, key="planned_runs")
     render_results_view(filtered_index, scoring_dir=SCORING_DIR, planned_runs=int(planned))
 
 elif page == "Paper Findings":
-    render_paper_findings()
+    _dataset_banner()
+    _ds_choice = st.session_state.get('sidebar_dataset', 'All')
+    render_paper_findings(dataset=_ds_choice)
 
 elif page == "Statistics":
+    _dataset_banner()
     render_statistics_view(filtered_index, scoring_dir=SCORING_DIR)
 
 elif page == "Coordination":
+    _dataset_banner()
     render_coordination_view(filtered_index, scoring_dir=SCORING_DIR)
 
 elif page == "Summary":
+    _dataset_banner()
     selected_run_id = render_summary_view(filtered_index, keyword=keyword, flagged_only=flagged_only)
     if selected_run_id:
         st.session_state["run_id"] = selected_run_id
@@ -356,9 +378,11 @@ elif page == "Run Detail":
                 st.rerun()
 
 elif page == "Charts":
+    _dataset_banner()
     render_aggregate_charts(filtered_index)
 
 elif page == "Compare":
+    _dataset_banner()
     run_ids = filtered_index["run_id"].tolist() if not filtered_index.empty else []
 
     if len(run_ids) < 2:
@@ -382,6 +406,7 @@ elif page == "Run Scenario":
     render_run_executor()
 
 elif page == "Score Runs":
+    _dataset_banner()
     render_score_runs_view(filtered_index, logs_dir=LOGS_DIR, scoring_dir=SCORING_DIR)
 
 elif page == "Live Chat":
@@ -391,9 +416,11 @@ elif page == "Run Experiments":
     render_batch_run_view(logs_dir=LOGS_DIR)
 
 elif page == "Re-Judge":
+    _dataset_banner()
     render_rejudge_view(filtered_index, logs_dir=LOGS_DIR)
 
 elif page == "Agreement":
+    _dataset_banner()
     render_agreement_view(SCORING_DIR)
 
 elif page == "Scenarios":
