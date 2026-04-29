@@ -49,10 +49,13 @@ def render_results_view(run_index: pd.DataFrame, scoring_dir: Path, planned_runs
     _render_progress_tracker(run_index, scoring_dir, planned_runs)
     st.markdown("---")
 
-    # Pull in run-level scores from run_scores.csv if present
+    # Pull in run-level scores — filter to run_ids in current dataset
     run_scores_df = _load_run_scores(scoring_dir)
+    if not run_scores_df.empty and not run_index.empty:
+        valid_run_ids = set(run_index["run_id"].tolist())
+        run_scores_df = run_scores_df[run_scores_df["run_id"].isin(valid_run_ids)]
     if not run_scores_df.empty:
-        st.info(f"📊 {len(run_scores_df)} run-level scores from {run_scores_df['rater_id'].nunique()} rater(s) loaded from run_scores.csv")
+        st.info(f"📊 {len(run_scores_df)} run-level scores from {run_scores_df['rater_id'].nunique()} rater(s)")
 
     if run_index.empty:
         st.info("No run data yet. Execute batch runs to populate this page.")
