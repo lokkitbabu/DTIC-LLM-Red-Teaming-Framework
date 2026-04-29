@@ -83,8 +83,7 @@ def render_results_view(run_index: pd.DataFrame, scoring_dir: Path, planned_runs
 
 
 def _render_leaderboard(run_index: pd.DataFrame, run_scores_df: pd.DataFrame) -> None:
-    """Ranked model table — primary source: run_scores.csv averages; fallback: run_index."""
-    # Show which dataset is active
+    """Leaderboard using combined scores from run_index (group_llm_avg + human)/2 weighting."""
     _ds = st.session_state.get("sidebar_dataset", "All")
     _ds_badge = {
         "Fidelity Ablation (full/medium/bare)": "🔬 Fidelity Ablation (full/medium/bare)",
@@ -92,6 +91,10 @@ def _render_leaderboard(run_index: pd.DataFrame, run_scores_df: pd.DataFrame) ->
         "All": "📊 All Scenarios",
     }.get(_ds, _ds)
     st.markdown(f"### Leaderboard — {_ds_badge}")
+
+    if run_index.empty:
+        st.info("No runs in current dataset.")
+        return
 
     def _shorten(m: str) -> str:
         _names = {
@@ -105,65 +108,96 @@ def _render_leaderboard(run_index: pd.DataFrame, run_scores_df: pd.DataFrame) ->
         model_id = m.split(":")[-1] if ":" in m else m
         return _names.get(model_id, model_id.split("/")[-1][:28])
 
-    # ── Build a clean scores DataFrame: columns = [model] + METRICS ──────────
-    if not run_scores_df.empty and all(m in run_scores_df.columns for m in METRICS):
-        src = run_scores_df[["model"] + METRICS].copy()
-        src["model"] = src["model"].apply(_shorten)
-        for m in METRICS:
-            src[m] = pd.to_numeric(src[m], errors="coerce")
-        source_label = "Manual scores"
-    else:
-        # Build from run_index — extract only llm_ columns, rename to bare
-        src_rows = []
-        for _, row in run_index.iterrows():
-            model = _shorten(str(row.get("model", "")))
-            r = {"model": model}
-            for m in METRICS:
-                v = row.get(f"llm_{m}", row.get(m))
-                r[m] = float(v) if v is not None and not (isinstance(v, float) and pd.isna(v)) else None
-            src_rows.append(r)
-        src = pd.DataFrame(src_rows)
-        for m in METRICS:
-            src[m] = pd.to_numeric(src[m], errors="coerce")
-        source_label = "LLM judge scores"
+    ri = run_index.copy()
+    ri["model"] = ri["model"].apply(_shorten)
 
-    if src.empty or src[METRICS].isna().all().all():
-        st.info("No scores available for leaderboard.")
+    # Determine score source for each row:
+    # - combined metric column (run_index[metric]) = (group_llm_avg + human)/2 if human exists, else llm only
+    # - use combined columns as the score
+    score_cols = [m for m in METRICS if m in ri.columns]
+    llm_cols   = [f"llm_{m}" for m in METRICS if f"llm_{m}" in ri.columns]
+    manual_cols = [f"manual_{m}" for m in METRICS if f"manual_{m}" in ri.columns]
+
+    if not score_cols:
+        st.info("No scores available. Re-judge some runs first.")
         return
 
-    # ── Aggregate ─────────────────────────────────────────────────────────────
-    agg = src.groupby("model", as_index=False)[METRICS].mean()
-    counts = src.groupby("model", as_index=False).size().rename(columns={"size": "N Runs"})
-    result = agg.merge(counts, on="model", how="left")
-    result["Total"] = result[METRICS].sum(axis=1)
-    result = result.sort_values("Total", ascending=False).reset_index(drop=True)
-    result.insert(0, "Rank", range(1, len(result) + 1))
-    leader = result["Total"].iloc[0]
-    result["vs #1"] = result["Total"].apply(lambda v: "—" if v == leader else f"{v - leader:+.2f}")
-    for m in METRICS + ["Total"]:
-        result[m] = result[m].round(2)
-    result = result.rename(columns={"model": "Model", **METRIC_LABELS_FULL})
+    for m in score_cols:
+        ri[m] = pd.to_numeric(ri[m], errors="coerce")
 
-    st.caption(f"Source: {source_label}")
-    st.dataframe(result, width='stretch', hide_index=True)
+    # Count N LLM runs (any row with at least one llm score)
+    has_llm = ri[[f"llm_{m}" for m in METRICS if f"llm_{m}" in ri.columns]].notna().any(axis=1)
+    llm_counts = ri[has_llm].groupby("model").size().rename("N LLM Runs")
 
+    # Count N Human Scores (from run_scores_df filtered to this dataset)
+    human_counts = pd.Series(dtype=int)
+    if not run_scores_df.empty and "model" in run_scores_df.columns:
+        rs = run_scores_df.copy()
+        rs["model"] = rs["model"].apply(_shorten)
+        human_counts = rs.groupby("model").size().rename("N Human Scores")
+
+    # Whether any human scores contributed
+    has_human = (
+        ri[[f"manual_{m}" for m in METRICS if f"manual_{m}" in ri.columns]].notna().any(axis=1)
+        if manual_cols else pd.Series(False, index=ri.index)
+    )
+    any_human = has_human.groupby(ri["model"]).any()
+
+    # Aggregate combined scores per model
+    agg = ri.groupby("model", as_index=False)[score_cols].mean()
+    agg["Total"] = agg[score_cols].sum(axis=1).round(2)
+    for m in score_cols:
+        agg[m] = agg[m].round(2)
+
+    # Merge counts
+    agg = agg.join(llm_counts, on="model", how="left")
+    agg = agg.join(human_counts, on="model", how="left")
+    agg["N LLM Runs"] = agg["N LLM Runs"].fillna(0).astype(int)
+    agg["N Human Scores"] = agg["N Human Scores"].fillna(0).astype(int)
+
+    # Source label per model
+    def _src(row):
+        if row["N Human Scores"] > 0 and row["N LLM Runs"] > 0:
+            return "✅ Combined"
+        elif row["N Human Scores"] > 0:
+            return "👤 Human only"
+        return "🤖 LLM only"
+    agg["Score Source"] = agg.apply(_src, axis=1)
+
+    agg = agg.sort_values("Total", ascending=False).reset_index(drop=True)
+    agg.insert(0, "Rank", range(1, len(agg) + 1))
+    leader = agg["Total"].iloc[0]
+    agg["vs #1"] = agg["Total"].apply(lambda v: "—" if v == leader else f"{v - leader:+.2f}")
+
+    display = agg.rename(columns={"model": "Model", **METRIC_LABELS_FULL})
+    col_order = ["Rank", "Model"] + [METRIC_LABELS_FULL[m] for m in score_cols] + \
+                ["Total", "N LLM Runs", "N Human Scores", "Score Source", "vs #1"]
+    col_order = [c for c in col_order if c in display.columns]
+
+    st.caption(
+        "Score = (group LLM avg + human score) / 2 when human scores exist; "
+        "LLM-only otherwise. N LLM Runs = automated evaluation runs."
+    )
+    st.dataframe(display[col_order], width='stretch', hide_index=True)
+
+    # Stacked bar chart
     colors_seq = px.colors.qualitative.Set2
     fig = go.Figure()
-    for i, metric in enumerate(METRICS):
+    for i, metric in enumerate(score_cols):
         label = METRIC_LABELS_FULL[metric]
-        if label in result.columns:
+        if label in display.columns:
             fig.add_trace(go.Bar(
                 name=METRIC_LABELS[metric],
-                x=result["Model"], y=result[label],
+                x=display["Model"], y=display[label],
                 marker_color=colors_seq[i % len(colors_seq)],
             ))
     fig.add_trace(go.Scatter(
-        name="Total", x=result["Model"], y=result["Total"],
+        name="Total", x=display["Model"], y=display["Total"],
         mode="markers+text", marker=dict(size=10, color="#1a1a1a"),
-        text=result["Total"].astype(str), textposition="top center", yaxis="y2",
+        text=display["Total"].astype(str), textposition="top center", yaxis="y2",
     ))
     fig.update_layout(
-        barmode="stack", title="Model Leaderboard — Stacked Score by Metric",
+        barmode="stack", title=f"Leaderboard — {_ds_badge}",
         xaxis_title="Model", yaxis=dict(title="Score", range=[0, 20]),
         yaxis2=dict(title="Total", overlaying="y", side="right", range=[0, 22], showgrid=False),
         legend_title="Metric", margin=dict(t=50, b=20), height=380,
