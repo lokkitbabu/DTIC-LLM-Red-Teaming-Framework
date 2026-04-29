@@ -15,13 +15,6 @@ import streamlit as st
 
 from dashboard.views.scoring import render_run_scoring_ui
 
-_METRICS = [
-    "identity_consistency",
-    "cultural_authenticity",
-    "naturalness",
-    "information_yield",
-]
-
 _RATER_IDS = ["Z", "L", "N", "S"]
 
 

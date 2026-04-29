@@ -14,13 +14,6 @@ from typing import Optional
 import pandas as pd
 import streamlit as st
 
-_METRICS = [
-    "identity_consistency",
-    "cultural_authenticity",
-    "naturalness",
-    "information_yield",
-]
-
 _METRIC_LABELS = {
     "identity_consistency": "Identity Consistency",
     "cultural_authenticity": "Cultural Authenticity",

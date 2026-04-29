@@ -13,13 +13,6 @@ import streamlit as st
 
 from dashboard.score_writer import ScoreWriter, RunScoreEntry
 
-_METRICS = [
-    "identity_consistency",
-    "cultural_authenticity",
-    "naturalness",
-    "information_yield",
-]
-
 _METRIC_LABELS = {
     "identity_consistency":  "Identity Consistency",
     "cultural_authenticity": "Cultural Authenticity",

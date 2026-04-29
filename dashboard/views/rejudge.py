@@ -14,13 +14,6 @@ from typing import Optional
 import pandas as pd
 import streamlit as st
 
-_METRICS = [
-    "identity_consistency",
-    "cultural_authenticity",
-    "naturalness",
-    "information_yield",
-]
-
 _JUDGE_PRESETS = [
     "openai:gpt-5.4",
     "openai:gpt-4.1-2025-04-14",

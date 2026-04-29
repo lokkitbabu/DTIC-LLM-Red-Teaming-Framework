@@ -17,13 +17,6 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
-METRICS = [
-    "identity_consistency",
-    "cultural_authenticity",
-    "naturalness",
-    "information_yield",
-]
-
 EXPECTED_RATERS = ["Z", "L", "N", "S"]
 
 

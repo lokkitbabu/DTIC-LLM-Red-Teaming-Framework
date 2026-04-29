@@ -18,13 +18,6 @@ from typing import Optional
 import pandas as pd
 import streamlit as st
 
-_METRICS = [
-    "identity_consistency",
-    "cultural_authenticity",
-    "naturalness",
-    "information_yield",
-]
-
 
 def render_agreement_view(scoring_dir: Path) -> None:
     """

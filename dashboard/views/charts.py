@@ -13,13 +13,6 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
-METRICS = [
-    "identity_consistency",
-    "cultural_authenticity",
-    "naturalness",
-    "information_yield",
-]
-
 METRIC_LABELS = {
     "identity_consistency": "Identity Consistency",
     "cultural_authenticity": "Cultural Authenticity",

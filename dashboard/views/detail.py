@@ -8,6 +8,7 @@ Tabs:
 """
 
 from __future__ import annotations
+from dashboard.display_utils import METRICS as _METRICS, METRIC_LABELS_FULL
 
 from pathlib import Path
 from typing import Optional
@@ -20,13 +21,6 @@ from dashboard.views.conversation import render_conversation_log
 from dashboard.views.scoring import render_manual_scoring_ui, render_run_scoring_ui
 from dashboard.views.drift import render_drift_analysis
 from dashboard.flag_manager import FlagManager
-
-_METRICS = [
-    "identity_consistency",
-    "cultural_authenticity",
-    "naturalness",
-    "information_yield",
-]
 
 _METRIC_LABELS = {
     "identity_consistency": "Identity Consistency",

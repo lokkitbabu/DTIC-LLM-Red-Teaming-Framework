@@ -1,2 +1,0 @@
-run_id,scenario_id,model,turn,text,identity_consistency,cultural_authenticity,naturalness,information_yield,rater_id,notes
-test-run-001,example_scenario,ollama:mistral,1,hello,5,4,4,3,rater1,
