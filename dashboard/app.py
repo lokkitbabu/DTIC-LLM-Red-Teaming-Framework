@@ -206,6 +206,7 @@ dataset_choice = st.sidebar.radio(
     "Dataset",
     ["Fidelity Ablation (full/medium/bare)", "Probe Scenario", "All"],
     key="sidebar_dataset",
+    on_change=st.cache_data.clear,
 )
 
 # Pre-filter run_index to selected dataset before any other filter
