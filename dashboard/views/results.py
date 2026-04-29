@@ -81,7 +81,14 @@ def render_results_view(run_index: pd.DataFrame, scoring_dir: Path, planned_runs
 
 def _render_leaderboard(run_index: pd.DataFrame, run_scores_df: pd.DataFrame) -> None:
     """Ranked model table — primary source: run_scores.csv averages; fallback: run_index."""
-    st.markdown("### Leaderboard")
+    # Show which dataset is active
+    _ds = st.session_state.get("sidebar_dataset", "All")
+    _ds_badge = {
+        "Fidelity Ablation (full/medium/bare)": "🔬 Fidelity Ablation (full/medium/bare)",
+        "Probe Scenario": "🎯 Probe Scenario",
+        "All": "📊 All Scenarios",
+    }.get(_ds, _ds)
+    st.markdown(f"### Leaderboard — {_ds_badge}")
 
     def _shorten(m: str) -> str:
         _names = {

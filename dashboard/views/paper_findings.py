@@ -132,6 +132,13 @@ def _mean_ci(vals: pd.Series) -> tuple[float, float]:
 
 def render_paper_findings() -> None:
     st.subheader("📄 Paper Findings")
+    _ds = st.session_state.get("sidebar_dataset", "All")
+    if _ds == "Probe Scenario":
+        st.info('📌 Dataset filter active: **Probe Scenario** only. Switch sidebar to All or Fidelity Ablation to see other data.')
+    elif _ds == "Fidelity Ablation (full/medium/bare)":
+        st.info('📌 Dataset filter active: **Fidelity Ablation** only. Switch sidebar to All or Probe Scenario to see other data.')
+    else:
+        st.success("📊 Showing **all datasets** — probe and ablation sections are kept separate below.")
     st.caption(
         "All results from the DTIC × Offset Labs study. "
         "Probe scenario and fidelity ablation kept separate. "

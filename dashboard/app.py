@@ -197,6 +197,26 @@ _fs: FilterState = st.session_state["filter_state"]
 st.sidebar.markdown("### Filters")
 
 all_models = sorted(run_index["model"].dropna().unique().tolist()) if not run_index.empty else []
+# ── Dataset selector ─────────────────────────────────────────────────────
+# Probe and ablation are completely separate experiments
+_PROBE_SCENARIOS = ["terrorism_recruitment_probe"]
+_ABLATION_SCENARIOS = ["terrorism_recruitment_full","terrorism_recruitment_medium","terrorism_recruitment_bare"]
+
+dataset_choice = st.sidebar.radio(
+    "Dataset",
+    ["Fidelity Ablation (full/medium/bare)", "Probe Scenario", "All"],
+    key="sidebar_dataset",
+)
+
+# Pre-filter run_index to selected dataset before any other filter
+if dataset_choice == "Fidelity Ablation (full/medium/bare)":
+    run_index = run_index[run_index["scenario_id"].isin(_ABLATION_SCENARIOS)]
+elif dataset_choice == "Probe Scenario":
+    run_index = run_index[run_index["scenario_id"].isin(_PROBE_SCENARIOS)]
+# "All" keeps everything
+
+st.sidebar.markdown("---")
+
 all_scenarios = sorted(run_index["scenario_id"].dropna().unique().tolist()) if not run_index.empty else []
 
 # Pre-populate from stored filter state; clamp to valid options
