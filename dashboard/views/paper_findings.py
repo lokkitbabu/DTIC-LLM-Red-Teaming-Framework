@@ -329,7 +329,7 @@ def _render_model_profiles(df: pd.DataFrame, title: str) -> None:
                 if ci_v is None or (isinstance(ci_v, float) and math.isnan(ci_v)):
                     return f"{mean_v:.2f}"
                 return f"{mean_v:.2f} ±{ci_v:.2f}"
-            display[METRIC_LABELS_FULL[m]] = display.apply(_fmt, axis=1)
+            display[METRIC_LABELS[m]] = display.apply(_fmt, axis=1)
         display = display.rename(columns={"total": "Total", "n": "N", "model": "Model"})
         display = display[["Model", "IC", "CA", "Nat", "IY", "Total", "N"]]
         st.dataframe(display, width="stretch", hide_index=True)
