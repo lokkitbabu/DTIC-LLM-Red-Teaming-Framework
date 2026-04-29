@@ -199,9 +199,6 @@ st.sidebar.markdown("### Filters")
 all_models = sorted(run_index["model"].dropna().unique().tolist()) if not run_index.empty else []
 # ── Dataset selector ─────────────────────────────────────────────────────
 # Probe and ablation are completely separate experiments
-_PROBE_SCENARIOS = ["terrorism_recruitment_probe"]
-_ABLATION_SCENARIOS = ["terrorism_recruitment_full","terrorism_recruitment_medium","terrorism_recruitment_bare"]
-
 dataset_choice = st.sidebar.radio(
     "Dataset",
     ["Fidelity Ablation (full/medium/bare)", "Probe Scenario", "All"],

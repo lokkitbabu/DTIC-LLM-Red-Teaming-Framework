@@ -9,6 +9,7 @@ Renders:
 """
 
 from __future__ import annotations
+from dashboard.display_utils import METRICS, METRIC_LABELS_FULL, shorten_model, load_human_scores, MODEL_COLORS
 
 from pathlib import Path
 
@@ -17,25 +18,11 @@ import plotly.graph_objects as go
 import plotly.express as px
 import streamlit as st
 
-METRICS = [
-    "identity_consistency",
-    "cultural_authenticity",
-    "naturalness",
-    "information_yield",
-]
-
 METRIC_LABELS = {
     "identity_consistency": "Identity Consistency",
     "cultural_authenticity": "Cultural Auth.",
     "naturalness": "Naturalness",
     "information_yield": "Info Yield",
-}
-
-METRIC_LABELS_FULL = {
-    "identity_consistency": "Identity Consistency",
-    "cultural_authenticity": "Cultural Authenticity",
-    "naturalness": "Naturalness",
-    "information_yield": "Information Yield",
 }
 
 
@@ -95,18 +82,6 @@ def _render_leaderboard(run_index: pd.DataFrame, run_scores_df: pd.DataFrame) ->
     if run_index.empty:
         st.info("No runs in current dataset.")
         return
-
-    def _shorten(m: str) -> str:
-        _names = {
-            "meta-llama/Llama-3.3-70B-Instruct-Turbo": "Llama 3.3 70B",
-            "deepseek-ai/DeepSeek-V3.1": "DeepSeek V3.1",
-            "mistral-large-latest": "Mistral Large 3",
-            "claude-sonnet-4-6": "Claude Sonnet 4.6",
-            "gpt-5.4": "GPT-5.4",
-            "grok-4.20-0309-non-reasoning": "Grok 4.20",
-        }
-        model_id = m.split(":")[-1] if ":" in m else m
-        return _names.get(model_id, model_id.split("/")[-1][:28])
 
     ri = run_index.copy()
     ri["model"] = ri["model"].apply(_shorten)

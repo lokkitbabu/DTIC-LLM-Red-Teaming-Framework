@@ -3,6 +3,7 @@ ManualScoringUI: per-run scoring (one score per rater per run) + run tagging.
 """
 
 from __future__ import annotations
+from dashboard.display_utils import METRICS as _METRICS, METRIC_LABELS_FULL as _METRIC_LABELS
 
 import math
 from pathlib import Path

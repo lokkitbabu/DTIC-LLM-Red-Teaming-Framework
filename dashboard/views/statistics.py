@@ -3,6 +3,7 @@ StatisticsView: paper-ready model × metric table with 95% CIs.
 """
 
 from __future__ import annotations
+from dashboard.display_utils import METRICS as _METRICS, METRIC_LABELS_FULL, shorten_model as _shorten_model, load_human_scores as _load_human_scores_from_supabase
 
 import math
 from pathlib import Path

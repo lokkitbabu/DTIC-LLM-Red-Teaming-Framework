@@ -6,6 +6,7 @@ without navigating to Run Detail. Replaces the need to hunt through Summary.
 """
 
 from __future__ import annotations
+from dashboard.display_utils import METRICS as _METRICS
 
 from pathlib import Path
 

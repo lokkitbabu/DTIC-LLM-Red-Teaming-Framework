@@ -9,6 +9,7 @@ Displays a summary table: run_id, metric, cohen_kappa, percent_agreement, n_rate
 """
 
 from __future__ import annotations
+from dashboard.display_utils import METRICS as _METRICS, load_human_scores
 
 from itertools import combinations
 from pathlib import Path

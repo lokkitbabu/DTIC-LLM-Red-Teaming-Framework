@@ -17,6 +17,7 @@ Sections:
 """
 
 from __future__ import annotations
+from dashboard.display_utils import METRICS, METRIC_LABELS_FULL, shorten_model, load_human_scores, MODEL_COLORS, PROBE_SCENARIOS, ABLATION_SCENARIOS, FIDELITY_LEVELS
 import math
 import numpy as np
 import pandas as pd
@@ -28,16 +29,6 @@ import plotly.express as px
 # Hard-coded data from Supabase (pre-computed to avoid query on load)
 # ---------------------------------------------------------------------------
 
-MODEL_SHORT = {
-    "AnthropicAdapter(model=claude-sonnet-4-6)":              "Claude Sonnet 4.6",
-    "GrokAdapter(model=grok-4.20-0309-non-reasoning)":        "Grok 4.20",
-    "OpenAIAdapter(model=gpt-5.4)":                           "GPT-5.4",
-    "TogetherAdapter(model=deepseek-ai/DeepSeek-V3.1)":       "DeepSeek V3.1",
-    "TogetherAdapter(model=meta-llama/Llama-3.3-70B-Instruct-Turbo)": "Llama 3.3 70B",
-    "MistralAdapter(model=mistral-large-latest)":             "Mistral Large 3",
-}
-
-METRICS = ["identity_consistency", "cultural_authenticity", "naturalness", "information_yield"]
 METRIC_LABELS = {"identity_consistency": "IC", "cultural_authenticity": "CA",
                  "naturalness": "Nat", "information_yield": "IY"}
 METRIC_FULL = {"identity_consistency": "Identity Consistency",
@@ -72,7 +63,7 @@ def _load_judge_scores() -> pd.DataFrame:
         if judge_df.empty or run_df.empty:
             return pd.DataFrame()
         merged = judge_df.merge(run_df, on="run_id")
-        merged["model"] = merged["subject_model"].map(MODEL_SHORT).fillna(merged["subject_model"])
+        merged["model"] = merged["subject_model"].apply(shorten_model)
         for m in METRICS:
             merged[m] = pd.to_numeric(merged[m], errors="coerce")
         merged["total"] = pd.to_numeric(merged["total"], errors="coerce")
@@ -99,13 +90,7 @@ def _load_human_scores() -> pd.DataFrame:
             return pd.DataFrame()
         merged = human_df.merge(run_df, on="run_id")
         # Clean model names using MODEL_SHORT, fall back to last path segment
-        def _clean(raw):
-            direct = MODEL_SHORT.get(raw)
-            if direct:
-                return direct
-            model_id = raw.split(":")[-1] if ":" in raw else raw
-            return MODEL_SHORT.get(model_id, model_id.split("/")[-1].split("(model=")[-1].rstrip(")")[:24])
-        merged["model"] = merged["subject_model"].apply(_clean)
+        merged["model"] = merged["subject_model"].apply(shorten_model)
         for m in ["identity_consistency","cultural_authenticity","naturalness","information_yield","total"]:
             if m in merged.columns:
                 merged[m] = pd.to_numeric(merged[m], errors="coerce")
@@ -297,7 +282,7 @@ def _render_model_profiles(df: pd.DataFrame, title: str) -> None:
     summary = summary.sort_values("total", ascending=False)
 
     models = summary["model"].tolist()
-    bar_colors = [COLORS.get(m, "#95a5a6") for m in models]
+    bar_colors = [MODEL_COLORS.get(m, "#95a5a6") for m in models]
 
     if chart_type == "Grouped bar":
         fig = go.Figure()
@@ -324,7 +309,7 @@ def _render_model_profiles(df: pd.DataFrame, title: str) -> None:
             fig.add_trace(go.Scatterpolar(
                 r=vals, theta=cats, fill="toself",
                 name=row["model"],
-                line_color=COLORS.get(row["model"], "#95a5a6"),
+                line_color=MODEL_COLORS.get(row["model"], "#95a5a6"),
             ))
         fig.update_layout(
             polar=dict(radialaxis=dict(visible=True, range=[0, 5])),
@@ -365,7 +350,7 @@ def _render_fidelity_chart(df: pd.DataFrame) -> None:
         
         fig = px.line(
             summary, x="fidelity", y="total", color="model",
-            color_discrete_map=COLORS, markers=True,
+            color_discrete_map=MODEL_COLORS, markers=True,
             title="Total Score by Fidelity Level",
             labels={"total": "Mean composite score (/20)", "fidelity": "Fidelity level"},
         )
@@ -378,7 +363,7 @@ def _render_fidelity_chart(df: pd.DataFrame) -> None:
         summary = summary.sort_values("fidelity")
         fig = px.line(
             summary, x="fidelity", y=metric, color="model",
-            color_discrete_map=COLORS, markers=True,
+            color_discrete_map=MODEL_COLORS, markers=True,
             title=f"{METRIC_FULL[metric]} by Fidelity Level",
             labels={metric: f"Mean {METRIC_LABELS[metric]} score (/5)", "fidelity": "Fidelity level"},
         )
@@ -484,7 +469,7 @@ def _render_failure_modes(df: pd.DataFrame) -> None:
         fail_rate.columns = ["model", "failure_rate"]
         fail_rate = fail_rate.sort_values("failure_rate", ascending=False)
         fig = px.bar(fail_rate, x="model", y="failure_rate",
-                     color="model", color_discrete_map=COLORS,
+                     color="model", color_discrete_map=MODEL_COLORS,
                      title="% runs with IC=1 (failure)", labels={"failure_rate": "%"})
         fig.update_layout(showlegend=False, height=320, yaxis_range=[0, 100])
         st.plotly_chart(fig, use_container_width=True)
@@ -495,7 +480,7 @@ def _render_failure_modes(df: pd.DataFrame) -> None:
         nat_avg = df.groupby("model")["naturalness"].mean().reset_index()
         nat_avg = nat_avg.sort_values("naturalness", ascending=False)
         fig = px.bar(nat_avg, x="model", y="naturalness",
-                     color="model", color_discrete_map=COLORS,
+                     color="model", color_discrete_map=MODEL_COLORS,
                      title="Mean Naturalness / Trust score", labels={"naturalness": "Score (1–5)"})
         fig.update_layout(showlegend=False, height=320, yaxis_range=[0, 5])
         st.plotly_chart(fig, use_container_width=True)

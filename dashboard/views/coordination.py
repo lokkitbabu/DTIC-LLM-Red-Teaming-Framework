@@ -10,6 +10,7 @@ Also renders a "what's left" action list so raters know their queue.
 """
 
 from __future__ import annotations
+from dashboard.display_utils import METRICS, load_human_scores
 
 from pathlib import Path
 

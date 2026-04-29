@@ -4,6 +4,7 @@ Stores each judge's scores separately — keeps all versions, never overwrites.
 """
 
 from __future__ import annotations
+from dashboard.display_utils import METRICS as _METRICS
 
 import json
 import threading
