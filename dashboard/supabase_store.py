@@ -354,12 +354,18 @@ class SupabaseStore:
             return []
 
     def delete_run(self, run_id: str) -> bool:
-        """Delete a run and all associated scores/memories from Supabase."""
+        """Delete a run and ALL associated records from Supabase, then refresh MV."""
         if not self.available:
             return False
         try:
-            for table in ("turn_scores", "run_scores", "run_logs"):
+            # Delete child tables first (FK constraints), then parent
+            for table in ("turn_scores", "run_scores", "judge_scores", "run_tags", "run_logs"):
                 self._client.table(table).delete().eq("run_id", run_id).execute()
+            # Refresh materialized view so dashboard reflects deletion immediately
+            try:
+                self._client.rpc("refresh_run_index", {}).execute()
+            except Exception:
+                pass
             return True
         except Exception as e:
             logger.error("delete_run %s failed: %s", run_id, e)
