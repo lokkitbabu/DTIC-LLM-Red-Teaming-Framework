@@ -167,7 +167,31 @@ def _render_leaderboard(run_index: pd.DataFrame, run_scores_df: pd.DataFrame) ->
 
 
 def _load_run_scores(scoring_dir: Path) -> pd.DataFrame:
-    """Load run_scores.csv if present."""
+    """Load run scores from Supabase (primary) or local CSV (fallback)."""
+    try:
+        from dashboard.supabase_store import get_store
+        from dashboard.supabase_store import _clean_model_str
+        store = get_store()
+        if store.available:
+            resp = store._client.table("run_scores").select(
+                "run_id, rater_id, identity_consistency, cultural_authenticity, naturalness, information_yield, total, notes"
+            ).execute()
+            if resp.data:
+                df = pd.DataFrame(resp.data)
+                # Join model from run_logs
+                run_resp = store._client.table("run_logs").select("run_id, subject_model").execute()
+                if run_resp.data:
+                    run_df = pd.DataFrame(run_resp.data)
+                    run_df["model"] = run_df["subject_model"].apply(_clean_model_str)
+                    df = df.merge(run_df[["run_id", "model"]], on="run_id", how="left")
+                for m in METRICS:
+                    if m in df.columns:
+                        df[m] = pd.to_numeric(df[m], errors="coerce")
+                return df
+    except Exception:
+        pass
+
+    # Fallback: local CSV
     path = Path(scoring_dir) / "run_scores.csv"
     if not path.exists():
         return pd.DataFrame()
