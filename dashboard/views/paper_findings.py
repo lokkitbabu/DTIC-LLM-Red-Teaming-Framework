@@ -320,9 +320,16 @@ def _render_model_profiles(df: pd.DataFrame, title: str) -> None:
     else:
         display = summary[["model"] + METRICS + ["total", "n"]].copy()
         for m in METRICS:
-            display[METRIC_LABELS[m]] = display.apply(
-                lambda r: f"{r[m]:.2f} ±{r[f'{m}_ci']:.2f}", axis=1
-            )
+            ci_col = f"{m}_ci"
+            def _fmt(r, _m=m, _ci=ci_col):
+                mean_v = r.get(_m) if hasattr(r, 'get') else (r[_m] if _m in r.index else None)
+                ci_v   = r.get(_ci) if hasattr(r, 'get') else (r[_ci] if _ci in r.index else None)
+                if mean_v is None or (isinstance(mean_v, float) and math.isnan(mean_v)):
+                    return "—"
+                if ci_v is None or (isinstance(ci_v, float) and math.isnan(ci_v)):
+                    return f"{mean_v:.2f}"
+                return f"{mean_v:.2f} ±{ci_v:.2f}"
+            display[METRIC_LABELS_FULL[m]] = display.apply(_fmt, axis=1)
         display = display.rename(columns={"total": "Total", "n": "N", "model": "Model"})
         display = display[["Model", "IC", "CA", "Nat", "IY", "Total", "N"]]
         st.dataframe(display, width="stretch", hide_index=True)
@@ -365,7 +372,7 @@ def _render_fidelity_chart(df: pd.DataFrame) -> None:
             summary, x="fidelity", y=metric, color="model",
             color_discrete_map=MODEL_COLORS, markers=True,
             title=f"{METRIC_FULL[metric]} by Fidelity Level",
-            labels={metric: f"Mean {METRIC_LABELS[metric]} score (/5)", "fidelity": "Fidelity level"},
+            labels={metric: f"Mean {METRIC_LABELS_FULL[metric]} score (/5)", "fidelity": "Fidelity level"},
         )
         fig.update_layout(yaxis_range=[0, 5.5], height=380)
         st.plotly_chart(fig, use_container_width=True)
@@ -553,7 +560,7 @@ def _build_export_table(df: pd.DataFrame, title: str, key: str, group_by=None) -
         row["n"] = len(grp)
         for m in METRICS:
             mean, hw = _mean_ci(grp[m])
-            row[METRIC_LABELS[m]] = f"{mean:.2f} ±{hw:.2f}" if not math.isnan(mean) else "—"
+            row[METRIC_LABELS_FULL[m]] = f"{mean:.2f} ±{hw:.2f}" if not math.isnan(mean) else "—"
         mean_t, _ = _mean_ci(grp["total"])
         row["Total"] = f"{mean_t:.2f}" if not math.isnan(mean_t) else "—"
         rows.append(row)
