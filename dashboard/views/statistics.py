@@ -76,6 +76,24 @@ def _compute_ci(values: pd.Series) -> tuple[float, float]:
     return _ci95_simple(values)
 
 
+
+_MODEL_NAMES = {
+    'meta-llama/Llama-3.3-70B-Instruct-Turbo': 'Llama 3.3 70B',
+    'deepseek-ai/DeepSeek-V3.1': 'DeepSeek V3.1',
+    'mistral-large-latest': 'Mistral Large 3',
+    'claude-sonnet-4-6': 'Claude Sonnet 4.6',
+    'gpt-5.4': 'GPT-5.4',
+    'grok-4.20-0309-non-reasoning': 'Grok 4.20',
+}
+
+def _shorten_model(m: str) -> str:
+    model_id = m.split(':')[-1] if ':' in m else m
+    direct = _MODEL_NAMES.get(model_id)
+    if direct:
+        return direct
+    model_id2 = model_id.split('/')[-1].split('(model=')[-1].rstrip(')')
+    return _MODEL_NAMES.get(model_id2, model_id2[:28])
+
 def render_statistics_view(
     run_index: pd.DataFrame,
     scoring_dir: Path = Path("logs/scoring"),
@@ -182,11 +200,9 @@ def render_statistics_view(
 
     display_df = pd.DataFrame(display_rows)
 
-    # Shorten model names
+    # Shorten model names to clean display names
     if "model" in display_df.columns:
-        display_df["model"] = display_df["model"].apply(
-            lambda x: str(x).split("/")[-1].split("(model=")[-1].rstrip(")")[:30]
-        )
+        display_df["model"] = display_df["model"].apply(_shorten_model)
 
     st.dataframe(display_df, width="stretch", hide_index=True)
 
@@ -316,6 +332,8 @@ def _build_score_df(
                 if not has_score:
                     continue
                 r = {c: row[c] for c in available_meta if c in row}
+                if "model" in r:
+                    r["model"] = _shorten_model(str(r["model"]))
                 for m in _METRICS:
                     r[m] = row.get(f"llm_{m}")
                 llm_rows.append(r)
@@ -323,32 +341,18 @@ def _build_score_df(
                 frames.append(pd.DataFrame(llm_rows))
 
     if "Human" in source or "Both" in source:
+        # For Human or Both: use the combined columns from run_index directly.
+        # These already have the correct 50/50 group-weighted scores:
+        # combined = (group_llm_avg + human_score) / 2
+        # Falls back to LLM-only for runs with no human score.
         try:
-            human_df = _load_human_scores_from_supabase()
-            if not human_df.empty:
-                numeric = [m for m in _METRICS if m in human_df.columns]
-                human_avg = (
-                    human_df.groupby("run_id")[numeric]
-                    .apply(lambda g: g.apply(pd.to_numeric, errors="coerce").mean())
-                    .reset_index()
-                )
-                merged = meta.merge(human_avg, on="run_id", how="inner")
-                if not merged.empty:
-                    frames.append(merged)
-            else:
-                # Fallback to local CSV
-                rs_path = scoring_dir / "run_scores.csv"
-                if rs_path.exists():
-                    human_df = pd.read_csv(rs_path, dtype={"run_id": str})
-                    numeric = [m for m in _METRICS if m in human_df.columns]
-                    human_avg = (
-                        human_df.groupby("run_id")[numeric]
-                        .apply(lambda g: g.apply(pd.to_numeric, errors="coerce").mean())
-                        .reset_index()
-                    )
-                    merged = meta.merge(human_avg, on="run_id", how="inner")
-                    if not merged.empty:
-                        frames.append(merged)
+            combined_cols = [m for m in _METRICS if m in run_index.columns]
+            if combined_cols:
+                combined_src = run_index[["run_id", "model", "scenario_id", "prompt_format"] + combined_cols].copy()
+                combined_src["model"] = combined_src["model"].apply(_shorten_model)
+                for m in combined_cols:
+                    combined_src[m] = pd.to_numeric(combined_src[m], errors="coerce")
+                frames = [combined_src]  # replace any LLM-only frame
         except Exception:
             pass
 
